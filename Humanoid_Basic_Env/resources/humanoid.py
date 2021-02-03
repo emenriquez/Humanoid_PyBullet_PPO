@@ -60,34 +60,20 @@ class Humanoid:
 
     def collectObservations(self):
         '''
-        Collect information on humanoid joints. Output of getJointInfo() will be in the following format:
-             0 - index: int
-             1 - name: str
-             2 - type: int <-- type of the joint, this also implies the number of position and velocity variables.
-                            JOINT_REVOLUTE, JOINT_PRISMATIC, JOINT_SPHERICAL, JOINT_PLANAR, JOINT_FIXED
-             3 - gIndex: int
-             4 - uIndex: int
-             5 - flags: int
-             6 - damping: float
-             7 - friction: float
-             8 - lowerLimit: float
-             9 - upperLimit: float
-            10 - maxForce: float
-            11 - maxVelocity: float
-            12 - linkName: str
-            13 - axis: tuple <-- Vector3
-            14 - parentFramePosition: tuple <-- Vector3
-            15 - parentFrameOrientation: tuple <-- Quaternion
-            16 - parentIndex: int
+        Collect state information on humanoid joints. Output of getJointStates() will be in the following format:
+             0 - position: float
+             1 - velocity: float
+             2 - Joint Reaction Forces: list of 6 floats
+             3 - applied Joint Motor Torque: fload (does not add more information if we use torque control since we know the input torque)
+        getJointStatesMultiDof() is used for Spherical Joints and returns 3 dimensional outputs instead of 1D output for revolute joints
         '''
         observations_list = []
-        jointList = self.revoluteJoints[0]
-        jointPos, jointVel, _, _ = p.getJointState(
+        jointState = p.getJointStates(
             self.humanoidAgent,
-            jointIndex=4,
+            jointIndices=self.revoluteJoints,
         )
-        print(jointPos)
-        print(jointVel)
+        
+        print([joint[:2] for joint in jointState])
 
         # return observations_list
     
