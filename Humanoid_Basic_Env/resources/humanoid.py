@@ -4,6 +4,7 @@ import os
 import numpy as np
 import json
 
+from humanoid_pose_interpolator import *
 
 class Humanoid:
     def __init__(self, client) -> None:
@@ -16,12 +17,13 @@ class Humanoid:
             globalScaling=0.25,
             physicsClientId=client,
             useFixedBase=1,
-            flags=(p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
+            flags=(p.URDF_MAINTAIN_LINK_ORDER and (p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
         )
         self.numJoints=p.getNumJoints(self.humanoidAgent)
         self.sphericalJoints=None
         self.revoluteJoints=None
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
+        self.interpolator = HumanoidPoseInterpolator()
         
     def get_ids(self):
         return self.humanoidAgent
@@ -146,10 +148,10 @@ class Humanoid:
             motion = json.load(motion_file)
 
         JointFrameMapIndices = [
-            0, #root
+            0,                  #root
             [9, 10, 11, 8],     #chest
             [13, 14, 15, 12],   #neck
-            [26, 27, 28, 25],    #rShoulder
+            [26, 27, 28, 25],   #rShoulder
             29,                 #rElbow
             0,                  #rWrist
             [40, 41, 42, 39],   #lShoulder
@@ -189,8 +191,13 @@ class Humanoid:
                     jointIndex=joint,
                     targetValue=[frame[i] for i in JointFrameMapIndices[joint]]
                 )
+            self.interpolator.Reset()
+            print(self.interpolator.ComputeLinVel([0, 0, 1], [1, 1, 1], 0.3))
             p.stepSimulation() 
             time.sleep(0.03)
+    
+    def computePose(self, frame):
+        pass
 
 # Debug tests
 
