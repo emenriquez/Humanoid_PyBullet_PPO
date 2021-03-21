@@ -4,7 +4,7 @@ import os
 import numpy as np
 import json
 
-from humanoid_pose_interpolator import *
+#from humanoid_pose_interpolator import *
 
 class Humanoid:
     def __init__(self, client) -> None:
@@ -23,7 +23,10 @@ class Humanoid:
         self.sphericalJoints=None
         self.revoluteJoints=None
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
-        self.interpolator = HumanoidPoseInterpolator()
+        p.setTimeStep(0.03)
+        self.initializeJoints()
+        # self.interpolator = HumanoidPoseInterpolator()
+        # self.interpolator.Reset()
         
     def get_ids(self):
         return self.humanoidAgent
@@ -164,6 +167,7 @@ class Humanoid:
             34,                 #lKnee
             [36, 37, 38, 35],   #lAnkle
         ]
+
         for frame in motion['Frames']:
             basePos1 = [frame[i] for i in [1, 2, 3]]
             baseOrn1 = frame[5:8] + [frame[4]]
@@ -191,25 +195,50 @@ class Humanoid:
                     jointIndex=joint,
                     targetValue=[frame[i] for i in JointFrameMapIndices[joint]]
                 )
-            self.interpolator.Reset()
-            print(self.interpolator.ComputeLinVel([0, 0, 1], [1, 1, 1], 0.3))
-            p.stepSimulation() 
+            p.stepSimulation()
             time.sleep(0.03)
     
-    def computePose(self, frame):
+    def computePoseReward(self):
+        return 1
+    def computeVelocityReward(self):
+        return 1
+    def computeEndEffectorReward(self):
+        totalDistance = sum([dist for dist in [1,2,3]])
+        return totalDistance
+    def computeCenterOfMassReward(self):
+        distance = np.linalg.norm(np.array([0,0,0]) - np.array([0,0,0.2]))
+        return np.exp(-10*distance)
+
+    def totalImitationReward(self):
+        poseReward = self.computePoseReward()
+        velocityReward = self.computeVelocityReward()
+        endEffectorReward = self.computeEndEffectorReward()
+        centerOfMassReward = self.computeCenterOfMassReward()
+        totalReward = 0.65*poseReward + 0.1*velocityReward + 0.15*endEffectorReward + 0.1*centerOfMassReward
+        return totalReward
+
+    def computeGoalReward(self, frame):
         pass
+
+
 
 # Debug tests
 
-clientID = p.connect(p.GUI)
+clientID = p.connect(p.DIRECT)
 p.setRealTimeSimulation(False)
 test = Humanoid(clientID)
 
+
 # test.getJointInfo()
-test.initializeJoints()
-for i in range(5):
+# test.initializeJoints()
+for i in range(1):
     test.playReferenceMotion('Motions/humanoid3d_backflip.txt')
 
+angle1 = p.getQuaternionFromEuler([0,0,0])
+angle2 = p.getQuaternionFromEuler([0,0.5,1.53])
+diffQuat = p.getDifferenceQuaternion(angle1,angle2)
+_, quatMag = p.getAxisAngleFromQuaternion(diffQuat)
+print(quatMag)
 # for i in range(1000):
 #     actions = [2*np.random.random() - np.random.random()] * 28
 #     test.applyActions(actions)
