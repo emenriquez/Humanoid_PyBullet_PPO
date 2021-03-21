@@ -1,1 +1,3 @@
 from Humanoid_Basic_Env.resources.plane import Plane
+from Humanoid_Basic_Env.resources.humanoid import Humanoid
+from Humanoid_Basic_Env.resources.humanoid_pose_interpolator import HumanoidPoseInterpolator

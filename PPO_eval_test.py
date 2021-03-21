@@ -2,9 +2,9 @@ from stable_baselines3 import ppo
 from stable_baselines3.ppo.ppo import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 import gym
-import helloRLWorldEnv
+import HumanoidBasicEnv
 
-env = gym.make('HelloRLWorldEnv-v0')
+env = gym.make('HumanoidBasicEnv-v0')
 
 
 model = PPO.load('test_ppo', env=env)

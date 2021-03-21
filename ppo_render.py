@@ -1,10 +1,10 @@
 import gym
-import helloRLWorldEnv
+import HumanoidBasicEnv
 import time
 
 from stable_baselines3 import PPO
 
-env_name = 'HelloRLWorldEnv-v0'
+env_name = 'HumanoidBasicEnv-v0'
 
 env = gym.make(env_name)
 

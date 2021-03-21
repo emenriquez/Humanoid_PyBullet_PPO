@@ -6,6 +6,10 @@ import time
 import pybullet_data
 import matplotlib.pyplot as plt
 
+# Used to perform relative imports from the resources folder
+from sys import path
+path.append(".")
+
 from Humanoid_Basic_Env.resources.plane import Plane
 from Humanoid_Basic_Env.resources.goal import Goal
 
@@ -163,25 +167,25 @@ class HumanoidBasicEnv(gym.Env):
 
 # Demo
 
-test = HumanoidBasicEnv()
+# test = HumanoidBasicEnv()
 
-time_step = test.reset()
+# time_step = test.reset()
 
-reward = 0
-total_steps = 0
-while reward < 5:
-    while not time_step[2] == True:
-        time_step = test.step(
-            [np.random.uniform(-1, 1), np.random.uniform(-1, 1)])
-        total_steps += 1
-        try:
-            test.render()
-        except:
-            quit()
-        if time_step[1] > 0:
-            print(time_step[1])
-            print(f'total steps: {total_steps}')
-            total_steps = 0
-            reward += time_step[1]
+# reward = 0
+# total_steps = 0
+# while reward < 5:
+#     while not time_step[2] == True:
+#         time_step = test.step(
+#             [np.random.uniform(-1, 1), np.random.uniform(-1, 1)])
+#         total_steps += 1
+#         try:
+#             test.render()
+#         except:
+#             quit()
+#         if time_step[1] > 0:
+#             print(time_step[1])
+#             print(f'total steps: {total_steps}')
+#             total_steps = 0
+#             reward += time_step[1]
 
-    time_step = test.reset()
+#     time_step = test.reset()
