@@ -92,11 +92,32 @@ class Humanoid:
         # use the first two values from each joint state (position, velocity) and flatten all tuples into a list
         # output is a flattened list containing:
             # 1D position and velocity for revolute Joints, followed by
-            #  Quaternion position and 3D velocity vectors for spherical Joints
+            #  Quaternion rotation and 3d angular velocity vectors for spherical Joints
         rootState = [position for position in rootPosition] + \
              [orientation for orientation in rootOrientation] + \
                  [velocity for velocity in rootVelocity] + \
                      [angularVelocity for angularVelocity in rootAngularVelocity]
+        '''
+        output index structure of allJointStates:
+            [0, 1, 2] - root position (xyz)
+            [3, 4, 5, 6] - root orientation quaternion (xyzw)
+            [7, 8, 9] - root velocity (xyz)
+            [10, 11, 12] - root angular velocity (xyz)
+            [13-14, 15-16, 17-18, 19-20] - (1D position, 1D velocity) for each revolute joint in the order:
+                                            rElbow,
+                                            lElbow,
+                                            rKnee,
+                                            lKnee
+            [21-27, 28-34...70-76] - (4D position Quaternion, 3D angular velocity) for each spherical joint in order:
+                                            chest,
+                                            neck,
+                                            rShoulder,
+                                            lShoulder,
+                                            rHip,
+                                            rAnkle,
+                                            lHip,
+                                            lAnkle
+        '''
         allJointStates = rootState + \
             [jointInfo for joint in revoluteJointStates for jointInfo in joint[:2]] + \
                 [jointInfo for joint in sphericalJointStates for jointInfo in list(sum(joint[:2], ()))]
@@ -196,52 +217,24 @@ class Humanoid:
                     targetValue=[frame[i] for i in JointFrameMapIndices[joint]]
                 )
             p.stepSimulation()
-            time.sleep(0.03)
-    
-    def computePoseReward(self):
-        return 1
-    def computeVelocityReward(self):
-        return 1
-    def computeEndEffectorReward(self):
-        totalDistance = sum([dist for dist in [1,2,3]])
-        return totalDistance
-    def computeCenterOfMassReward(self):
-        distance = np.linalg.norm(np.array([0,0,0]) - np.array([0,0,0.2]))
-        return np.exp(-10*distance)
-
-    def totalImitationReward(self):
-        poseReward = self.computePoseReward()
-        velocityReward = self.computeVelocityReward()
-        endEffectorReward = self.computeEndEffectorReward()
-        centerOfMassReward = self.computeCenterOfMassReward()
-        totalReward = 0.65*poseReward + 0.1*velocityReward + 0.15*endEffectorReward + 0.1*centerOfMassReward
-        return totalReward
-
-    def computeGoalReward(self, frame):
-        pass
-
-
+            time.sleep(0.01)
 
 # Debug tests
 
-clientID = p.connect(p.DIRECT)
+clientID = p.connect(p.GUI)
 p.setRealTimeSimulation(False)
 test = Humanoid(clientID)
 
-
 # test.getJointInfo()
 # test.initializeJoints()
+
 for i in range(1):
     test.playReferenceMotion('Motions/humanoid3d_backflip.txt')
 
-angle1 = p.getQuaternionFromEuler([0,0,0])
-angle2 = p.getQuaternionFromEuler([0,0.5,1.53])
-diffQuat = p.getDifferenceQuaternion(angle1,angle2)
-_, quatMag = p.getAxisAngleFromQuaternion(diffQuat)
-print(quatMag)
 # for i in range(1000):
 #     actions = [2*np.random.random() - np.random.random()] * 28
 #     test.applyActions(actions)
 #     time.sleep(0.03)
 
 # p.disconnect()
+
