@@ -2,6 +2,13 @@ import pybullet as p
 import os
 import numpy as np
 import json
+import sys
+
+# Used to perform relative imports from the resources folder
+from sys import path
+path.append(".")
+
+from humanoid import Humanoid
 
 
 class Target:
@@ -10,66 +17,164 @@ class Target:
     Mocap files include positions at time intervals, so this will also add velocity information
     to the data upon initialization.
     '''
-    def __init__(self, motionFile):
+    def __init__(self, client, motionFile):
         self.agentPose = np.zeros(shape=(77,))
         self.targetPose = [
             -0.26454898715019226, 0.022854402661323547, 0.9122610688209534,
             0.6474829034058529, -0.29051448629257354, 0.2797007736899504, 0.6466333584408804,
             0.0, 0.0, 0.0,
             0.0, 0.0, 0.0,
-            0.9392771431776723, 2.3911381059224115,
-            0.9818866497297722, 1.1595216576590746,
-            -0.7149742790237188, -0.6544759674572938,
-            -0.7509255528107431, -0.5865517603581043,
-            -0.011300824231338314, 0.011183972519850557, 0.005038624557936806, 0.9998609015222727,
-            0.2897713383005688, 0.10879788515515416, 0.7232058583108675,
-            0.0032829310045616234, -0.030613089313622575, -0.23172806506017016, 0.9722932505114725,
-            0.012815274322457514, 0.08422102372018905, 0.6504554225982309,
-            -0.557081520118961, -0.0054891433954768944, 0.5123622256285788, 0.6535403575875486,
-            1.45159897583345, 0.8899270768780816, -1.3185170906576993,
-            0.7731724180516226, -0.02733566533656029, 0.39978692582419756, 0.4915562910846042,
-            -2.505437131719275, -0.9266668423381779, -0.7332852741501034,
-            -0.11282908812298957, -0.11101821098567483, -0.09999650401970536, 0.9823162692772182,
-            0.3515394002242417, 0.26966724744615134, 0.3198455507945587,
-            -0.019489282785801722, 0.02214128043023203, -0.21271679494060253, 0.9766685705537997,
-            0.03835010565113387, -0.07202154405427952, 0.5946565443183871,
-            0.10694754473069207, 0.09045802597721561, -0.0927923250252098, 0.9857835221937918,
-            -0.32482451771327897, -0.2180212455818368, 0.2890557581879866,
-            0.019502985446742713, -0.02214366984014484, -0.21271686684439264, 0.9766682271910865,
-            -0.03742407785899163, 0.07206793233426356, 0.5946288472716175
+            -0.69534, 0.0,
+            0.867543, 0.0,
+            -0.733329, 0.0,
+            0.947101, 0.0,
+            -0.015759001331352007, 0.009407000794722275, -0.0057410004850112235, 0.9998150844663816,
+            0.0, 0.0, 0.0,
+            0.003101813040613037, -0.031763325735139306, -0.24121322629597997, 0.9699472405002186,
+            0.0, 0.0, 0.0,
+            -0.11787694094614279, -0.11500194238645632, -0.10483494747990599, 0.9807595086602051,
+            0.0, 0.0, 0.0,
+            -0.02001800984225732, 0.023144011379218874, -0.22142810886958508, 0.9746964792291358,
+            0.0, 0.0, 0.0,
+            -0.5642888606830595, -0.0143471321709281, 0.5323338844841742, 0.6308667663916643,
+            0.0, 0.0, 0.0,
+            0.11165900540256528, 0.09369100453319251, -0.09715500470079644, 0.9845380476363823,
+            0.0, 0.0, 0.0,
+            0.02001800984225732, -0.023144011379218874, -0.22142810886958508, 0.9746964792291358,
+            0.0, 0.0, 0.0,
+            0.7851171556608757, -0.013963002768368036, 0.416618082600584, 0.45806709081845176,
+            0.0, 0.0, 0.0,
+            -0.04338079765310836, -0.15550348262029812, 0.11769126614205666,
+            -0.5504272207179463, -0.3467609398159516, 1.659535929062007,
+            -0.04108051249642725, 0.20917186490503967, 0.12540074110919452,
+            -0.6488312005607257, 0.3900464487042496, 1.6567469444044791
             ]
         motionFile = os.path.join(os.path.dirname(__file__), motionFile)
         with open(motionFile, "r") as f:
             self.targetMotion = json.load(f)
-   
-    def playReferenceMotion(self):
+        
+        self.targetDummy = Humanoid(client)
+        self.targetDummyID = self.targetDummy.get_ids()
 
+    def initializeMotionTarget(self):
+        '''
+        Convert the motion file into a format that matches the observations collected from the agent in order to compare and compute rewards.
+        '''
         JointFrameMapIndices = [
             0,                  #root
             [9, 10, 11, 8],     #chest
             [13, 14, 15, 12],   #neck
-            [26, 27, 28, 25],   #rShoulder
-            29,                 #rElbow
-            0,                  #rWrist
-            [40, 41, 42, 39],   #lShoulder
-            43,                 #lElbow
-            0,                  #lWrist
             [17, 18, 19, 16],   #rHip
             20,                 #rKnee
             [22, 23, 24, 21],   #rAnkle
+            [26, 27, 28, 25],   #rShoulder
+            29,                 #rElbow
+            0,                  #rWrist
             [31, 32, 33, 30],   #lHip
             34,                 #lKnee
             [36, 37, 38, 35],   #lAnkle
+            [40, 41, 42, 39],   #lShoulder
+            43,                 #lElbow
+            0,                  #lWrist
         ]
 
-        for frame in self.targetMotion['Frames']:
-            targetPos_orig = [frame[i] for i in [1, 2, 3]]
-            targetOrn_orig = frame[5:8] + [frame[4]]
+        processedTargetMotion = []
+
+        targetFrames = self.targetMotion['Frames']
+        for frameIndex in range(len(targetFrames)-1):
+            # Calculate First Frame
+            targetPos_orig = [targetFrames[frameIndex][i] for i in [1, 2, 3]]
+            targetOrn_orig = targetFrames[frameIndex][5:8] + [targetFrames[frameIndex][4]]
             # transform the position and orientation to have z-axis upward
             y2zPos = [0, 0, 0.0]
             y2zOrn = p.getQuaternionFromEuler([1.57, 0, 0])
-            targetPos, targetOrn = p.multiplyTransforms(y2zPos, y2zOrn, targetPos_orig, targetOrn_orig)
+            basePos, baseOrn = p.multiplyTransforms(y2zPos, y2zOrn, targetPos_orig, targetOrn_orig)
+            # set the agent's root position and orientation
+            p.resetBasePositionAndOrientation(
+                self.targetDummyID,
+                posObj=basePos,
+                ornObj=baseOrn
+            )
+
+            # Set joint positions
+            for joint in self.targetDummy.revoluteJoints:
+                p.resetJointState(
+                    self.targetDummyID,
+                    jointIndex=joint,
+                    targetValue=targetFrames[frameIndex][JointFrameMapIndices[joint]]
+                )
+            for joint in self.targetDummy.sphericalJoints:
+                p.resetJointStateMultiDof(
+                    self.targetDummyID,
+                    jointIndex=joint,
+                    targetValue=[targetFrames[frameIndex][i] for i in JointFrameMapIndices[joint]]
+                )
+            currentFrame = self.targetDummy.collectObservations()
+            deltaTime = targetFrames[frameIndex][0]
+
+            if frameIndex < len(targetFrames)-1:
+                targetPos_orig = [targetFrames[frameIndex+1][i] for i in [1, 2, 3]]
+                targetOrn_orig = targetFrames[frameIndex+1][5:8] + [targetFrames[frameIndex+1][4]]
+                # transform the position and orientation to have z-axis upward
+                y2zPos = [0, 0, 0.0]
+                y2zOrn = p.getQuaternionFromEuler([1.57, 0, 0])
+                basePos, baseOrn = p.multiplyTransforms(y2zPos, y2zOrn, targetPos_orig, targetOrn_orig)
+                # set the agent's root position and orientation
+                p.resetBasePositionAndOrientation(
+                    self.targetDummyID,
+                    posObj=basePos,
+                    ornObj=baseOrn
+                )
+
+                # Set joint positions
+                for joint in self.targetDummy.revoluteJoints:
+                    p.resetJointState(
+                        self.targetDummyID,
+                        jointIndex=joint,
+                        targetValue=targetFrames[frameIndex+1][JointFrameMapIndices[joint]]
+                    )
+                for joint in self.targetDummy.sphericalJoints:
+                    p.resetJointStateMultiDof(
+                        self.targetDummyID,
+                        jointIndex=joint,
+                        targetValue=[targetFrames[frameIndex+1][i] for i in JointFrameMapIndices[joint]]
+                    )
+                nextFrame = self.targetDummy.collectObservations()
+
+            processedTargetMotion.append(self.processVelocities(currentFrame, nextFrame, deltaTime))
+            self.targetPose = currentFrame
+            print(f'{frameIndex}\t {self.totalImitationReward(agentPose=processedTargetMotion[-1]):.4f}')
+
+        return processedTargetMotion
     
+    def calculateLinearVelocity(self, posStart, posEnd, deltaTime):
+        velocity = [(posStart[i] - posEnd[i])/deltaTime for i in range(len(posStart))]
+        return velocity
+
+    def calculateAngularVelocity(self, ornStart, ornEnd, deltaTime):
+        dorn = p.getDifferenceQuaternion(ornStart, ornEnd)
+        axis, angle = p.getAxisAngleFromQuaternion(dorn)
+        angVel = [(x*angle) / deltaTime for x in axis]
+        return angVel
+
+    def processVelocities(self, frame, nextFrame, deltaTime):
+        # pre-fill processed frame with currentFrame data
+        processedFrame = frame[:]
+
+        # fill processedFrame with velocities
+        # base velocity
+        processedFrame[7:10] = self.calculateLinearVelocity(frame[0:3], nextFrame[0:3], deltaTime)
+        # base angular velocities
+        processedFrame[10:13] = self.calculateAngularVelocity(frame[3:7], nextFrame[3:7], deltaTime)
+        # 1D joint velocities
+        for i in [13, 15, 17, 19]:
+            processedFrame[i+1] = self.calculateLinearVelocity([frame[i]], [nextFrame[i]], deltaTime)[0]
+        # Angular Velocities from Quaternions
+        for i in [21, 28, 35, 42, 49, 56, 63, 70]:
+            processedFrame[i+4:i+7] = self.calculateAngularVelocity(frame[i:i+4], nextFrame[i:i+4], deltaTime)
+
+        return processedFrame
+
     def computePoseReward(self):
         totalQuatDistance = 0
         for i in [3, 21, 28, 35, 42, 49, 56, 63, 70]:
@@ -81,11 +186,11 @@ class Target:
             totalQuatDistance += np.around(quatMag, decimals=2)
         return np.exp(-2*totalQuatDistance)
     def computeVelocityReward(self):
-        velocityIndices = [7]
+        velocityIndices = [7, 25, 32, 39, 46, 53, 60, 67, 74]
         totalVelocityDifference = sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in velocityIndices])
         return np.exp(-0.1*totalVelocityDifference)
     def computeEndEffectorReward(self):
-        totalDistance = 0 #sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in [1,2,3]])
+        totalDistance = sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in [77, 80, 83, 86]])
         return np.exp(-40*totalDistance)
     def computeCenterOfMassReward(self):
         agentRoot = self.agentPose[0:3]
@@ -107,33 +212,40 @@ class Target:
 
 
 # Debug tests
-test = Target(motionFile='Motions/humanoid3d_backflip.txt')
+clientID = p.connect(p.DIRECT)
+test = Target(client=clientID, motionFile='Motions/humanoid3d_backflip.txt')
 
 testPose2 = [
-    -0.44130900502204895, 0.02583223767578602, 1.0564767122268677,
-    -0.24188393221053409, 0.6695399431026858, -0.6485714477105822, -0.269376140634284,
+    -0.35500800609588623, 0.02783391624689102, 1.0422571897506714,
+    0.6223108303817404, -0.37940458264375937, 0.32550806494422807, 0.6023503073086023,
     0.0, 0.0, 0.0,
     0.0, 0.0, 0.0,
-    0.5555630367106815, 2.0705012236893854,
-    0.6915158740900548, 1.9381958030018247,
-    -0.9538431984557761, 3.647093384807462,
-    -0.8957132008622479, 3.713493304591733,
-    0.001663352267994256, 0.0054796645024944995, -0.11647103652945383, 0.9931775793814154,
-    0.08628664927992263, -0.24908711914674023, 0.31666258792230567,
-    0.025506464687364606, -0.04944438309881907, 0.01688265144890089, 0.9983083938939834,
-    -0.07365610969286648, 0.13601601350460607, -0.05089663342769386,
-    -0.3098741478881212, 0.17608638499844134, 0.26293753719176294, 0.8965687084793458,
-    0.9904951140466739, -0.1867593622373129, -0.8777807152781558,
-    0.36278965706169924, -0.3737106116196629, 0.28543756814344606, 0.804518140369916,
-    -1.4541873643069911, 0.5048816826323125, -1.297628507948555,
-    -0.07958504348309814, -0.07652186454870559, 0.7254465355050566, 0.6793658434330457,
-    -0.015819810408372194, 0.2931707535894853, -2.275912001217917,
-    -0.020635606847958326, 0.16472373144773317, -0.1594845528972215, 0.973141788957357,
-    -0.024871345875511125, -0.4615316779143598, 0.45686730882013404,
-    0.07139572828468081, 0.050254427008476626, 0.7189899573892184, 0.689514745108616,
-    -0.026078733124507793, -0.2307963076930653, -2.2382721784907442,
-    0.020629449773169183, -0.1647236836409558, -0.159484374219689, 0.9731419568745172,
-    0.024474107527542692, 0.461468648000345, 0.45695096654118383
-    ]
+    -1.304763, 0.0,
+    1.049183, 0.0,
+    -1.455006, 0.0,
+    1.040217, 0.0,
+    -0.01234700117334175, 0.017517001664649506, -0.02341500222513947, 0.9994960949826182,
+    0.0, 0.0, 0.0,
+    0.008414392760023457, -0.02556603748749739, -0.2258530502836992, 0.9737894923438108,
+    0.0, 0.0, 0.0,
+    -0.157774963995284, -0.08523898054821115, 0.08140198142382576, 0.9804157762662042,
+    0.0, 0.0, 0.0,
+    -0.02029632723630169, 0.17125192259441938, -0.16635012950772768, 0.9708699565447446,
+    0.0, 0.0, 0.0,
+    -0.5675199873815431, -0.28422662422837225, 0.285825698816142, 0.7179414738670981,
+    0.0, 0.0, 0.0,
+    0.10870401641979728, 0.07920501196395756, 0.07324301106339429, 0.9882031492685912,
+    0.0, 0.0, 0.0,
+    0.02029632723630169, -0.17125192259441938, -0.16635012950772768, 0.9708699565447446,
+    0.0, 0.0, 0.0,
+    0.6554179738992906, 0.2886789885039369, 0.1664349933720594, 0.6777839730086095,
+    0.0, 0.0, 0.0,
+    0.0018463717634861695, -0.1512310135444939, 0.43374322483901195,
+    -0.7804912276107155, -0.5604335921107495, 1.4655383360806236,
+    -0.04402742031443441, 0.17440317058074054, 0.45523042153975224,
+    -0.7658689070738836, 0.6593761167752237, 1.4336295342435508
+]
+
+result = test.initializeMotionTarget()
 
 print(f'total imitation reward: {test.totalImitationReward(agentPose=testPose2):.4f}')

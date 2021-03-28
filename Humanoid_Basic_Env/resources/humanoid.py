@@ -4,7 +4,7 @@ import os
 import numpy as np
 import json
 
-#from humanoid_pose_interpolator import *
+# from humanoid_pose_interpolator import *
 
 class Humanoid:
     def __init__(self, client) -> None:
@@ -17,7 +17,7 @@ class Humanoid:
             globalScaling=0.25,
             physicsClientId=client,
             useFixedBase=1,
-            flags=(p.URDF_MAINTAIN_LINK_ORDER and (p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+            flags=(p.URDF_MAINTAIN_LINK_ORDER or p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
         )
         self.numJoints=p.getNumJoints(self.humanoidAgent)
         self.sphericalJoints=None
@@ -34,11 +34,9 @@ class Humanoid:
     def getJointInfo(self):
         for joint in range(self.numJoints):
 
-            name, jointID, jointTypeIndex = p.getJointInfo(self.humanoidAgent, joint)[:3]
-            # jointID = .getJointInfo(self.humanoidAgent, joint)[0]
-            # jointTypeIndex = p.getJointInfo(self.humanoidAgent, joint)[2]
+            jointID, name, jointTypeIndex = p.getJointInfo(self.humanoidAgent, joint)[:3]
             jointType = ['JOINT_REVOLUTE', 'JOINT_PRISMATIC', 'JOINT_SPHERICAL', 'JOINT_PLANAR', 'JOINT_FIXED'][jointTypeIndex]
-            print(f'{jointID} - Joint Name: {name}\t Type: {jointType}')
+            print(f'{jointID}\t Joint Name: {name}\t Type: {jointType}')
 
     def initializeJoints(self):
         '''
@@ -51,7 +49,7 @@ class Humanoid:
             if jointType == 2:
                 p.setJointMotorControlMultiDof(
                     bodyUniqueId=self.humanoidAgent,
-                    jointIndex=1,
+                    jointIndex=joint,
                     controlMode=p.POSITION_CONTROL,
                     targetVelocity=[0,0,0],
                     force=[0,0,0]
@@ -66,6 +64,7 @@ class Humanoid:
                     force=0
                 )
                 self.revoluteJoints.append(joint)
+        # print(self.revoluteJoints, self.sphericalJoints)
 
     def collectObservations(self):
         '''
@@ -88,6 +87,10 @@ class Humanoid:
             self.humanoidAgent,
             jointIndex=self.sphericalJoints,
         )
+
+        # Collect the position of end effectors (Hands and Feet)
+        endEffectorPositions = [position[0] for position in p.getLinkStates(bodyUniqueId=self.get_ids(), linkIndices=[5, 8, 11, 14])]
+        endEffectorPositionsFlattened = [position for link in endEffectorPositions for position in link]
         
         # use the first two values from each joint state (position, velocity) and flatten all tuples into a list
         # output is a flattened list containing:
@@ -104,23 +107,29 @@ class Humanoid:
             [7, 8, 9] - root velocity (xyz)
             [10, 11, 12] - root angular velocity (xyz)
             [13-14, 15-16, 17-18, 19-20] - (1D position, 1D velocity) for each revolute joint in the order:
-                                            rElbow,
-                                            lElbow,
                                             rKnee,
-                                            lKnee
-            [21-27, 28-34...70-76] - (4D position Quaternion, 3D angular velocity) for each spherical joint in order:
+                                            rElbow,
+                                            lKnee,
+                                            lElbow
+            [21-27, 28-34...70-76] - (4D orientation Quaternion, 3D angular velocity) for each spherical joint in order:
                                             chest,
                                             neck,
-                                            rShoulder,
-                                            lShoulder,
                                             rHip,
                                             rAnkle,
+                                            rShoulder,
                                             lHip,
-                                            lAnkle
+                                            lAnkle,
+                                            lShoulder
+            [77-79, 80-82...86-88] - 3D global positions of End Effectors (hands and feet of agent):
+                                            rAnkle,
+                                            rWrist,
+                                            lAnkle,
+                                            lWrist
         '''
         allJointStates = rootState + \
             [jointInfo for joint in revoluteJointStates for jointInfo in joint[:2]] + \
-                [jointInfo for joint in sphericalJointStates for jointInfo in list(sum(joint[:2], ()))]
+                [jointInfo for joint in sphericalJointStates for jointInfo in list(sum(joint[:2], ()))] + \
+                    endEffectorPositionsFlattened
 
         return allJointStates
     
@@ -130,18 +139,18 @@ class Humanoid:
              0 - root             Type: FIXED
              1 - chest            Type: SPHERICAL
              2 - neck             Type: SPHERICAL
-             3 - right_shoulder   Type: SPHERICAL
-             4 - right_elbow      Type: REVOLUTE
-             5 - right_wrist      Type: FIXED
-             6 - left_shoulder    Type: SPHERICAL
-             7 - left_elbow       Type: REVOLUTE
-             8 - left_wrist       Type: FIXED
-             9 - right_hip        Type: SPHERICAL
-            10 - right_knee       Type: REVOLUTE
-            11 - right_ankle      Type: SPHERICAL
-            12 - left_hip         Type: SPHERICAL
-            13 - left_knee        Type: REVOLUTE
-            14 - left_ankle       Type: SPHERICAL
+             3 - right_hip        Type: SPHERICAL
+             4 - right_knee       Type: REVOLUTE
+             5 - right_ankle      Type: SPHERICAL
+             6 - right_shoulder   Type: SPHERICAL
+             7 - right_elbow      Type: REVOLUTE
+             8 - right_wrist      Type: FIXED
+             9 - left_hip         Type: SPHERICAL
+            10 - left_knee        Type: REVOLUTE
+            11 - left_ankle       Type: SPHERICAL
+            12 - left_shoulder    Type: SPHERICAL
+            13 - left_elbow       Type: REVOLUTE
+            14 - left_wrist       Type: FIXED
         '''
         # Format actions from -1,1 to actual values.
         # New scaledAction values will fall in range of -maxForce, maxForce
@@ -171,22 +180,40 @@ class Humanoid:
         with open(motionFile, "r") as motion_file:
             motion = json.load(motion_file)
 
+        '''
+        Joint indices should correspond to the following:
+             0 - root             Type: FIXED
+             1 - chest            Type: SPHERICAL
+             2 - neck             Type: SPHERICAL
+             3 - right_hip        Type: SPHERICAL
+             4 - right_knee       Type: REVOLUTE
+             5 - right_ankle      Type: SPHERICAL
+             6 - right_shoulder   Type: SPHERICAL
+             7 - right_elbow      Type: REVOLUTE
+             8 - right_wrist      Type: FIXED
+             9 - left_hip         Type: SPHERICAL
+            10 - left_knee        Type: REVOLUTE
+            11 - left_ankle       Type: SPHERICAL
+            12 - left_shoulder    Type: SPHERICAL
+            13 - left_elbow       Type: REVOLUTE
+            14 - left_wrist       Type: FIXED
+        '''
         JointFrameMapIndices = [
             0,                  #root
             [9, 10, 11, 8],     #chest
             [13, 14, 15, 12],   #neck
-            [26, 27, 28, 25],   #rShoulder
-            29,                 #rElbow
-            0,                  #rWrist
-            [40, 41, 42, 39],   #lShoulder
-            43,                 #lElbow
-            0,                  #lWrist
             [17, 18, 19, 16],   #rHip
             20,                 #rKnee
             [22, 23, 24, 21],   #rAnkle
+            [26, 27, 28, 25],   #rShoulder
+            29,                 #rElbow
+            0,                  #rWrist
             [31, 32, 33, 30],   #lHip
             34,                 #lKnee
             [36, 37, 38, 35],   #lAnkle
+            [40, 41, 42, 39],   #lShoulder
+            43,                 #lElbow
+            0,                  #lWrist
         ]
 
         for frame in motion['Frames']:
@@ -221,15 +248,13 @@ class Humanoid:
 
 # Debug tests
 
-clientID = p.connect(p.GUI)
-p.setRealTimeSimulation(False)
-test = Humanoid(clientID)
+# clientID = p.connect(p.GUI)
+# p.setRealTimeSimulation(False)
+# test = Humanoid(clientID)
 
-# test.getJointInfo()
-# test.initializeJoints()
 
-for i in range(1):
-    test.playReferenceMotion('Motions/humanoid3d_backflip.txt')
+# for i in range(1):
+#     test.playReferenceMotion('Motions/humanoid3d_backflip.txt')
 
 # for i in range(1000):
 #     actions = [2*np.random.random() - np.random.random()] * 28
