@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 from sys import path
 path.append(".")
 
-from Humanoid_Basic_Env.resources.plane import Plane
-from Humanoid_Basic_Env.resources.goal import Goal
+from Humanoid_Basic_Env.resources.humanoid import Humanoid
+from Humanoid_Basic_Env.resources.target import Target
 
 class HumanoidBasicEnv(gym.Env):
     '''
@@ -37,7 +37,7 @@ class HumanoidBasicEnv(gym.Env):
         # Pybullet environment settings
         self.client = p.connect(p.DIRECT)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        p.setPhysicsEngineParameter(fixedTimeStep=0.1)
+        p.setPhysicsEngineParameter(fixedTimeStep=1./240)
         p.setPhysicsEngineParameter(numSolverIterations=12)
         p.setGravity(0, 0, -10)
         p.setRealTimeSimulation(0)

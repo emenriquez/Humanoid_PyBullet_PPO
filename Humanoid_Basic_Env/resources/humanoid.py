@@ -13,17 +13,17 @@ class Humanoid:
         self.humanoidAgent = p.loadURDF(
             fileName=f_name,
             basePosition=[0,1,0],
-            baseOrientation=p.getQuaternionFromEuler([0,0,0]),
+            baseOrientation=p.getQuaternionFromEuler([1.57, 0, 0]),
             globalScaling=0.25,
             physicsClientId=client,
-            useFixedBase=1,
+            useFixedBase=True,
             flags=(p.URDF_MAINTAIN_LINK_ORDER or p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
         )
         self.numJoints=p.getNumJoints(self.humanoidAgent)
         self.sphericalJoints=None
         self.revoluteJoints=None
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
-        p.setTimeStep(0.03)
+        p.setTimeStep(1./240)
         self.initializeJoints()
         # self.interpolator = HumanoidPoseInterpolator()
         # self.interpolator.Reset()
@@ -64,7 +64,7 @@ class Humanoid:
                     force=0
                 )
                 self.revoluteJoints.append(joint)
-        # print(self.revoluteJoints, self.sphericalJoints)
+        print(self.revoluteJoints, self.sphericalJoints)
 
     def collectObservations(self):
         '''
@@ -135,41 +135,43 @@ class Humanoid:
     
     def applyActions(self, actions):
         '''
-        Joint indices should correspond to the following:
-             0 - root             Type: FIXED
-             1 - chest            Type: SPHERICAL
-             2 - neck             Type: SPHERICAL
-             3 - right_hip        Type: SPHERICAL
-             4 - right_knee       Type: REVOLUTE
-             5 - right_ankle      Type: SPHERICAL
-             6 - right_shoulder   Type: SPHERICAL
-             7 - right_elbow      Type: REVOLUTE
-             8 - right_wrist      Type: FIXED
-             9 - left_hip         Type: SPHERICAL
-            10 - left_knee        Type: REVOLUTE
-            11 - left_ankle       Type: SPHERICAL
-            12 - left_shoulder    Type: SPHERICAL
-            13 - left_elbow       Type: REVOLUTE
-            14 - left_wrist       Type: FIXED
+        Action indices should correspond to the following:
+              [0-2] - chest            Type: SPHERICAL
+              [3-5] - neck             Type: SPHERICAL
+              [6-8] - right_hip        Type: SPHERICAL
+             [9-11] - right_ankle      Type: SPHERICAL
+            [12-14] - right_shoulder   Type: SPHERICAL
+            [15-17] - left_hip         Type: SPHERICAL
+            [18-20] - left_ankle       Type: SPHERICAL
+            [21-23] - left_shoulder    Type: SPHERICAL
+               [24] - right_knee       Type: REVOLUTE
+               [25] - right_elbow      Type: REVOLUTE
+               [26] - left_knee        Type: REVOLUTE
+               [27] - left_elbow       Type: REVOLUTE
         '''
         # Format actions from -1,1 to actual values.
         # New scaledAction values will fall in range of -maxForce, maxForce
         maxForce = 200000
         scaledActions = [action*maxForce for action in actions]
+        formattedActions = []
+        # condense flat array into list of list format for spherical joint control
+        for i in [0,3,6,9,12,15,18,21]:
+            formattedActions.append(scaledActions[i:i+3])
+        formattedActions.extend(scaledActions[24:])
 
         # Set spherical joint torques
         p.setJointMotorControlMultiDofArray(
             bodyUniqueId=self.humanoidAgent,
             jointIndices=self.sphericalJoints,
             controlMode=p.TORQUE_CONTROL,
-            forces=scaledActions[0:24]
+            forces=formattedActions[:8]
         )
         # Set revolute joint torques (Commands are different)
         p.setJointMotorControlArray(
             bodyUniqueId=self.humanoidAgent,
             jointIndices=self.revoluteJoints,
             controlMode=p.TORQUE_CONTROL,
-            forces=scaledActions[24:]
+            forces=formattedActions[8:]
         )
 
         # Once all actions are sent, complete by stepping the simulation forward
@@ -243,23 +245,26 @@ class Humanoid:
                     jointIndex=joint,
                     targetValue=[frame[i] for i in JointFrameMapIndices[joint]]
                 )
-            p.stepSimulation()
-            time.sleep(0.01)
+            for i in range(16):
+                p.stepSimulation()
+                time.sleep(0.1/240)
 
 # Debug tests
 
-# clientID = p.connect(p.GUI)
-# p.setRealTimeSimulation(False)
-# test = Humanoid(clientID)
-
+clientID = p.connect(p.GUI)
+p.setRealTimeSimulation(False)
+test = Humanoid(clientID)
 
 # for i in range(1):
 #     test.playReferenceMotion('Motions/humanoid3d_backflip.txt')
 
-# for i in range(1000):
-#     actions = [2*np.random.random() - np.random.random()] * 28
-#     test.applyActions(actions)
-#     time.sleep(0.03)
+    # testing joint control
+# actions = np.zeros(shape=(28,))
+# for index in range(8):
+#     for i in range(50):
+#         actions[3*index:3*index+3] = [2*np.random.random() - np.random.random()] *3
+#         test.applyActions(actions)
+#         time.sleep(0.02)
 
-# p.disconnect()
+p.disconnect()
 
