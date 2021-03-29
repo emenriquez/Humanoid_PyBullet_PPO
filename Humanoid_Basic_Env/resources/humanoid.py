@@ -64,7 +64,7 @@ class Humanoid:
                     force=0
                 )
                 self.revoluteJoints.append(joint)
-        print(self.revoluteJoints, self.sphericalJoints)
+        # print(self.revoluteJoints, self.sphericalJoints)
 
     def collectObservations(self):
         '''
@@ -249,12 +249,46 @@ class Humanoid:
                 p.stepSimulation()
                 time.sleep(0.1/240)
 
+    def setStartingPositionAndVelocity(self, inputFrame):
+        # set the agent's root position and orientation
+        p.resetBasePositionAndOrientation(
+            self.humanoidAgent,
+            posObj=inputFrame[0:3],
+            ornObj=inputFrame[3:7]
+        )
+        # set the agent's root velocity and angular velocity
+        p.resetBaseVelocity(
+            self.humanoidAgent,
+            linearVelocity=inputFrame[7:10],
+            angularVelocity=inputFrame[10:13]
+        )
+        # Set joint positions
+        revoluteJointIndices = [13, 15, 17, 19]
+        for i, joint in enumerate(self.revoluteJoints):
+            p.resetJointState(
+                self.humanoidAgent,
+                jointIndex=joint,
+                targetValue=inputFrame[revoluteJointIndices[i]],
+                targetVelocity=inputFrame[revoluteJointIndices[i]+1]
+            )
+        sphericalJointIndices = [21, 28, 35, 42, 49, 56, 63, 70]
+        p.resetJointStatesMultiDof(
+            self.humanoidAgent,
+            jointIndices=self.sphericalJoints,
+            targetValues=[inputFrame[index:index+4] for index in sphericalJointIndices],
+            targetVelocities=[inputFrame[index+4:index+7] for index in sphericalJointIndices]
+        )
+        # slight delay is needed before agent will reset. Need to investigate before removing this delay
+        time.sleep(0.005)
+        p.stepSimulation()
+
 # Debug tests
 
-clientID = p.connect(p.GUI)
-p.setRealTimeSimulation(False)
-test = Humanoid(clientID)
+# clientID = p.connect(p.GUI)
+# p.setRealTimeSimulation(False)
+# test = Humanoid(clientID)
 
+    # testing mocap file playback
 # for i in range(1):
 #     test.playReferenceMotion('Motions/humanoid3d_backflip.txt')
 
@@ -265,6 +299,10 @@ test = Humanoid(clientID)
 #         actions[3*index:3*index+3] = [2*np.random.random() - np.random.random()] *3
 #         test.applyActions(actions)
 #         time.sleep(0.02)
+# for i in range(100):
+#     actions = np.random.random(size=(28,))
+#     test.applyActions(actions)
+#     time.sleep(0.02)
 
-p.disconnect()
+# p.disconnect()
 

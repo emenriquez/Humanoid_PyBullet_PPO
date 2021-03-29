@@ -21,8 +21,8 @@ class HumanoidBasicEnv(gym.Env):
     def __init__(self):
         # Actions
         self.action_space = gym.spaces.box.Box(
-            low=np.array([-1,-1], dtype=np.float32),
-            high=np.array([1,1], dtype=np.float32)
+            low=np.array([-1]*28, dtype=np.float32),
+            high=np.array([1]*28, dtype=np.float32)
         )  
 
         # Observations

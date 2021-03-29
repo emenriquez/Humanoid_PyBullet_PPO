@@ -2,7 +2,6 @@ import pybullet as p
 import os
 import numpy as np
 import json
-import sys
 
 # Used to perform relative imports from the resources folder
 from sys import path
@@ -57,7 +56,8 @@ class Target:
         self.targetDummyID = self.targetDummy.get_ids()
 
         # Format the mocap data with the current agent on startup
-        self.initializeMotionTarget()
+        self.processedMotionTarget = self.initializeMotionTarget()
+        self.framePosition = 0
 
     def initializeMotionTarget(self):
         '''
@@ -214,10 +214,20 @@ class Target:
     def computeGoalReward(self, frame):
         pass
 
+    def randomStartFrame(self):
+        self.framePosition = np.random.randint(0,high=len(self.processedMotionTarget)-1)
+        return self.processedMotionTarget[self.framePosition]
+
+    def nextFrame(self):
+        if self.framePosition < len(self.processedMotionTarget):
+            self.framePosition += 1
+        return self.processedMotionTarget[self.framePosition]
 
 # Debug tests
-# clientID = p.connect(p.DIRECT)
-# test = Target(client=clientID, motionFile='Motions/humanoid3d_backflip.txt')
+clientID = p.connect(p.DIRECT)
+test = Target(client=clientID, motionFile='Motions/humanoid3d_backflip.txt')
+
+print(test.randomStartFrame())
 
 # testPose2 = [
 #     -0.35500800609588623, 0.02783391624689102, 1.0422571897506714,
