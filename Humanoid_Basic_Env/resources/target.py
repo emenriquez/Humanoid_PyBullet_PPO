@@ -7,7 +7,7 @@ import json
 from sys import path
 path.append(".")
 
-from humanoid import Humanoid
+from Humanoid_Basic_Env.resources.humanoid import Humanoid
 
 
 class Target:
@@ -224,10 +224,10 @@ class Target:
         return self.processedMotionTarget[self.framePosition]
 
 # Debug tests
-clientID = p.connect(p.DIRECT)
-test = Target(client=clientID, motionFile='Motions/humanoid3d_backflip.txt')
+# clientID = p.connect(p.DIRECT)
+# test = Target(client=clientID, motionFile='Motions/humanoid3d_backflip.txt')
 
-print(test.randomStartFrame())
+# print(test.randomStartFrame())
 
 # testPose2 = [
 #     -0.35500800609588623, 0.02783391624689102, 1.0422571897506714,

@@ -12,6 +12,7 @@ path.append(".")
 
 from Humanoid_Basic_Env.resources.humanoid import Humanoid
 from Humanoid_Basic_Env.resources.target import Target
+from Humanoid_Basic_Env.resources.plane import Plane
 
 class HumanoidBasicEnv(gym.Env):
     '''
@@ -19,6 +20,9 @@ class HumanoidBasicEnv(gym.Env):
     '''
 
     def __init__(self):
+        # Mocap file for imitation
+        self.motionFile='Motions/humanoid3d_backflip.txt'
+
         # Actions
         self.action_space = gym.spaces.box.Box(
             low=np.array([-1]*28, dtype=np.float32),
@@ -26,9 +30,40 @@ class HumanoidBasicEnv(gym.Env):
         )  
 
         # Observations
+        observation_mins = [
+            -15, -15, -15,
+            -1, -1, -1, -1,
+            -15, -15, -15,
+            -15, -15, -15,
+            -1, -15,
+            -1, -15,
+            -1, -15,
+            -1, -15,
+            -1, -1, -1, -1,
+            -15, -15, -15,
+            -1, -1, -1, -1,
+            -15, -15, -15,
+            -1, -1, -1, -1,
+            -15, -15, -15,
+            -1, -1, -1, -1,
+            -15, -15, -15,
+            -1, -1, -1, -1,
+            -15, -15, -15,
+            -1, -1, -1, -1,
+            -15, -15, -15,
+            -1, -1, -1, -1,
+            -15, -15, -15,
+            -1, -1, -1, -1,
+            -15, -15, -15,
+            -15, -15, -15,
+            -15, -15, -15,
+            -15, -15, -15,
+            -15, -15, -15,
+        ]
+        observation_maxs = [-1*minimum for minimum in observation_mins]
         self.observation_space = gym.spaces.box.Box(
-            low=np.array([-10, -10, -10, -10, -10, -10, -10, -10,], dtype=np.float32),
-            high=np.array([10,10,10,10,10,10,10,10,], dtype=np.float32)
+            low=np.array(observation_mins, dtype=np.float32),
+            high=np.array(observation_maxs, dtype=np.float32)
         )
 
         # Basic environment settings
@@ -54,21 +89,17 @@ class HumanoidBasicEnv(gym.Env):
                                                      nearVal=0.1,
                                                      farVal=100.0)
 
-        # Import URDF
+        # Import URDF files
         planeId = Plane(self.client)
+        self.agentId = Humanoid(self.client)
 
-        agentStartPos = [0,0,5]
-        agentStartOrientation = p.getQuaternionFromEuler([0,0,0])
-        self.agentId = p.loadURDF('Humanoid_Basic_Env/resources/humanoid.urdf', agentStartPos, agentStartOrientation)
-
-        goal = Goal(self.client,base=[0,0,0.4])
-        self.boxUid = goal.get_ids()
+        self.target = Target(self.client, self.motionFile)
 
         # Initial state settings
         self.state = None
         self.done = False
         self.rendered_img = None
-        self.ballPositionZ = 1
+        self.touchingGround = False
         self.episode_reward = 0
 
     def seed(self, seed=None):
@@ -77,13 +108,9 @@ class HumanoidBasicEnv(gym.Env):
 
     def collectObservations(self):
         observations_list = []
-        observations_list.append(
-            p.getBasePositionAndOrientation(self.boxUid)[0]),
-        observations_list.append(
-            p.getBasePositionAndOrientation(self.agentId)[0])
-        observations_list.append(p.getBaseVelocity(self.agentId)[0][:2])
+        observations_list.extend(self.agentId.collectObservations())
 
-        return [item for observation in observations_list for item in observation]
+        return observations_list
 
     def reset(self):
         p.resetBasePositionAndOrientation(self.boxUid,
@@ -189,3 +216,35 @@ class HumanoidBasicEnv(gym.Env):
 #             reward += time_step[1]
 
 #     time_step = test.reset()
+
+
+# minitest min-max values
+[-0.6799079775810242, 0.02380305714905262, 1.1805833578109741,
+-0.1667420640999807, -0.6905400446171615, 0.6981512593935416, -0.08908619335799633,
+3.3253440856933594, 0.002926260232925415, 1.786172866821289,
+-0.09215739836958381, -8.75097205024548, 0.35173200957394357,
+-0.998702, 8.902032000000002,
+0.868153, -0.14176000000000144,
+-0.890919, 10.068096,
+0.94688, 1.9909440000000007,
+-0.08598599557477384, 0.047140997573912186, -0.055993997118297, 0.9936039488646707,
+2.209115733354423, 1.2046558490051353, -0.8679064953512636,
+0.019252264750213566, -0.09782824057445717, 0.04044566528419171, 0.9941947162441636,
+-0.3813360381403612, -0.5773694894768511, -2.0656408153494112,
+-0.026425993876067318, -0.12445097115985974, 0.9311397842186225, 0.3417489208034561,
+-0.23969575388158404, 1.5421230470263936, 1.5275898575634983,
+-0.020649305891224882, 0.11181417093320895, -0.1068271295003358, 0.9877546060370705,
+0.006693770927006737, -1.2980716336641578, 1.3535037101334666,
+-0.3124783593752776, 0.1640603545851045, 0.2232132152649167, 0.9086348746920528,
+-0.7696849949897562, -1.6337595182954914, 3.52510452817576,
+-0.0360090062730035, 0.09113101587561671, 0.8935971556704465, 0.4380440763101321,
+-0.045205681906630435, 0.29419529459465643, 2.534765026422221,
+0.020649305891224882, -0.11181417093320895, -0.1068271295003358, 0.9877546060370705,
+-0.006693770927006737, 1.2980716336641578, 1.3535037101334666,
+0.406211188383157, -0.5089544643860224, 0.13083838611967702, 0.747555442981642,
+-2.713719844309651, -2.030431009817903, 4.682886022784714,
+-1.259761615107517, -0.14609189718561952, 0.6601938464042352,
+-0.9942192395145011, -0.21957797631863457, 0.8163674095889648,
+-1.3147061946596212, 0.2253475068197199, 0.7289818014076757,
+-0.9002054965988906, 0.2650005054017699, 0.9911003616929229
+]
