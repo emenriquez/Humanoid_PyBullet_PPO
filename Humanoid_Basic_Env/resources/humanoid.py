@@ -4,7 +4,7 @@ import os
 import numpy as np
 import json
 
-#from humanoid_pose_interpolator import *
+# from humanoid_pose_interpolator import *
 
 class Humanoid:
     def __init__(self, client) -> None:
@@ -13,17 +13,17 @@ class Humanoid:
         self.humanoidAgent = p.loadURDF(
             fileName=f_name,
             basePosition=[0,1,0],
-            baseOrientation=p.getQuaternionFromEuler([0,0,0]),
+            baseOrientation=p.getQuaternionFromEuler([1.57, 0, 0]),
             globalScaling=0.25,
             physicsClientId=client,
-            useFixedBase=1,
-            flags=(p.URDF_MAINTAIN_LINK_ORDER and (p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+            useFixedBase=True,
+            flags=(p.URDF_MAINTAIN_LINK_ORDER or p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
         )
         self.numJoints=p.getNumJoints(self.humanoidAgent)
         self.sphericalJoints=None
         self.revoluteJoints=None
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
-        p.setTimeStep(0.03)
+        p.setTimeStep(1./240)
         self.initializeJoints()
         # self.interpolator = HumanoidPoseInterpolator()
         # self.interpolator.Reset()
@@ -34,11 +34,9 @@ class Humanoid:
     def getJointInfo(self):
         for joint in range(self.numJoints):
 
-            name, jointID, jointTypeIndex = p.getJointInfo(self.humanoidAgent, joint)[:3]
-            # jointID = .getJointInfo(self.humanoidAgent, joint)[0]
-            # jointTypeIndex = p.getJointInfo(self.humanoidAgent, joint)[2]
+            jointID, name, jointTypeIndex = p.getJointInfo(self.humanoidAgent, joint)[:3]
             jointType = ['JOINT_REVOLUTE', 'JOINT_PRISMATIC', 'JOINT_SPHERICAL', 'JOINT_PLANAR', 'JOINT_FIXED'][jointTypeIndex]
-            print(f'{jointID} - Joint Name: {name}\t Type: {jointType}')
+            print(f'{jointID}\t Joint Name: {name}\t Type: {jointType}')
 
     def initializeJoints(self):
         '''
@@ -51,7 +49,7 @@ class Humanoid:
             if jointType == 2:
                 p.setJointMotorControlMultiDof(
                     bodyUniqueId=self.humanoidAgent,
-                    jointIndex=1,
+                    jointIndex=joint,
                     controlMode=p.POSITION_CONTROL,
                     targetVelocity=[0,0,0],
                     force=[0,0,0]
@@ -66,6 +64,7 @@ class Humanoid:
                     force=0
                 )
                 self.revoluteJoints.append(joint)
+        # print(self.revoluteJoints, self.sphericalJoints)
 
     def collectObservations(self):
         '''
@@ -88,58 +87,91 @@ class Humanoid:
             self.humanoidAgent,
             jointIndex=self.sphericalJoints,
         )
+
+        # Collect the position of end effectors (Hands and Feet)
+        endEffectorPositions = [position[0] for position in p.getLinkStates(bodyUniqueId=self.get_ids(), linkIndices=[5, 8, 11, 14])]
+        endEffectorPositionsFlattened = [position for link in endEffectorPositions for position in link]
         
         # use the first two values from each joint state (position, velocity) and flatten all tuples into a list
         # output is a flattened list containing:
             # 1D position and velocity for revolute Joints, followed by
-            #  Quaternion position and 3D velocity vectors for spherical Joints
+            #  Quaternion rotation and 3d angular velocity vectors for spherical Joints
         rootState = [position for position in rootPosition] + \
              [orientation for orientation in rootOrientation] + \
                  [velocity for velocity in rootVelocity] + \
                      [angularVelocity for angularVelocity in rootAngularVelocity]
+        '''
+        output index structure of allJointStates:
+            [0, 1, 2] - root position (xyz)
+            [3, 4, 5, 6] - root orientation quaternion (xyzw)
+            [7, 8, 9] - root velocity (xyz)
+            [10, 11, 12] - root angular velocity (xyz)
+            [13-14, 15-16, 17-18, 19-20] - (1D position, 1D velocity) for each revolute joint in the order:
+                                            rKnee,
+                                            rElbow,
+                                            lKnee,
+                                            lElbow
+            [21-27, 28-34...70-76] - (4D orientation Quaternion, 3D angular velocity) for each spherical joint in order:
+                                            chest,
+                                            neck,
+                                            rHip,
+                                            rAnkle,
+                                            rShoulder,
+                                            lHip,
+                                            lAnkle,
+                                            lShoulder
+            [77-79, 80-82...86-88] - 3D global positions of End Effectors (hands and feet of agent):
+                                            rAnkle,
+                                            rWrist,
+                                            lAnkle,
+                                            lWrist
+        '''
         allJointStates = rootState + \
             [jointInfo for joint in revoluteJointStates for jointInfo in joint[:2]] + \
-                [jointInfo for joint in sphericalJointStates for jointInfo in list(sum(joint[:2], ()))]
+                [jointInfo for joint in sphericalJointStates for jointInfo in list(sum(joint[:2], ()))] + \
+                    endEffectorPositionsFlattened
 
         return allJointStates
     
     def applyActions(self, actions):
         '''
-        Joint indices should correspond to the following:
-             0 - root             Type: FIXED
-             1 - chest            Type: SPHERICAL
-             2 - neck             Type: SPHERICAL
-             3 - right_shoulder   Type: SPHERICAL
-             4 - right_elbow      Type: REVOLUTE
-             5 - right_wrist      Type: FIXED
-             6 - left_shoulder    Type: SPHERICAL
-             7 - left_elbow       Type: REVOLUTE
-             8 - left_wrist       Type: FIXED
-             9 - right_hip        Type: SPHERICAL
-            10 - right_knee       Type: REVOLUTE
-            11 - right_ankle      Type: SPHERICAL
-            12 - left_hip         Type: SPHERICAL
-            13 - left_knee        Type: REVOLUTE
-            14 - left_ankle       Type: SPHERICAL
+        Action indices should correspond to the following:
+              [0-2] - chest            Type: SPHERICAL
+              [3-5] - neck             Type: SPHERICAL
+              [6-8] - right_hip        Type: SPHERICAL
+             [9-11] - right_ankle      Type: SPHERICAL
+            [12-14] - right_shoulder   Type: SPHERICAL
+            [15-17] - left_hip         Type: SPHERICAL
+            [18-20] - left_ankle       Type: SPHERICAL
+            [21-23] - left_shoulder    Type: SPHERICAL
+               [24] - right_knee       Type: REVOLUTE
+               [25] - right_elbow      Type: REVOLUTE
+               [26] - left_knee        Type: REVOLUTE
+               [27] - left_elbow       Type: REVOLUTE
         '''
         # Format actions from -1,1 to actual values.
         # New scaledAction values will fall in range of -maxForce, maxForce
         maxForce = 200000
         scaledActions = [action*maxForce for action in actions]
+        formattedActions = []
+        # condense flat array into list of list format for spherical joint control
+        for i in [0,3,6,9,12,15,18,21]:
+            formattedActions.append(scaledActions[i:i+3])
+        formattedActions.extend(scaledActions[24:])
 
         # Set spherical joint torques
         p.setJointMotorControlMultiDofArray(
             bodyUniqueId=self.humanoidAgent,
             jointIndices=self.sphericalJoints,
             controlMode=p.TORQUE_CONTROL,
-            forces=scaledActions[0:24]
+            forces=formattedActions[:8]
         )
         # Set revolute joint torques (Commands are different)
         p.setJointMotorControlArray(
             bodyUniqueId=self.humanoidAgent,
             jointIndices=self.revoluteJoints,
             controlMode=p.TORQUE_CONTROL,
-            forces=scaledActions[24:]
+            forces=formattedActions[8:]
         )
 
         # Once all actions are sent, complete by stepping the simulation forward
@@ -150,22 +182,40 @@ class Humanoid:
         with open(motionFile, "r") as motion_file:
             motion = json.load(motion_file)
 
+        '''
+        Joint indices should correspond to the following:
+             0 - root             Type: FIXED
+             1 - chest            Type: SPHERICAL
+             2 - neck             Type: SPHERICAL
+             3 - right_hip        Type: SPHERICAL
+             4 - right_knee       Type: REVOLUTE
+             5 - right_ankle      Type: SPHERICAL
+             6 - right_shoulder   Type: SPHERICAL
+             7 - right_elbow      Type: REVOLUTE
+             8 - right_wrist      Type: FIXED
+             9 - left_hip         Type: SPHERICAL
+            10 - left_knee        Type: REVOLUTE
+            11 - left_ankle       Type: SPHERICAL
+            12 - left_shoulder    Type: SPHERICAL
+            13 - left_elbow       Type: REVOLUTE
+            14 - left_wrist       Type: FIXED
+        '''
         JointFrameMapIndices = [
             0,                  #root
             [9, 10, 11, 8],     #chest
             [13, 14, 15, 12],   #neck
-            [26, 27, 28, 25],   #rShoulder
-            29,                 #rElbow
-            0,                  #rWrist
-            [40, 41, 42, 39],   #lShoulder
-            43,                 #lElbow
-            0,                  #lWrist
             [17, 18, 19, 16],   #rHip
             20,                 #rKnee
             [22, 23, 24, 21],   #rAnkle
+            [26, 27, 28, 25],   #rShoulder
+            29,                 #rElbow
+            0,                  #rWrist
             [31, 32, 33, 30],   #lHip
             34,                 #lKnee
             [36, 37, 38, 35],   #lAnkle
+            [40, 41, 42, 39],   #lShoulder
+            43,                 #lElbow
+            0,                  #lWrist
         ]
 
         for frame in motion['Frames']:
@@ -195,53 +245,64 @@ class Humanoid:
                     jointIndex=joint,
                     targetValue=[frame[i] for i in JointFrameMapIndices[joint]]
                 )
-            p.stepSimulation()
-            time.sleep(0.03)
-    
-    def computePoseReward(self):
-        return 1
-    def computeVelocityReward(self):
-        return 1
-    def computeEndEffectorReward(self):
-        totalDistance = sum([dist for dist in [1,2,3]])
-        return totalDistance
-    def computeCenterOfMassReward(self):
-        distance = np.linalg.norm(np.array([0,0,0]) - np.array([0,0,0.2]))
-        return np.exp(-10*distance)
+            for i in range(16):
+                p.stepSimulation()
+                time.sleep(0.1/240)
 
-    def totalImitationReward(self):
-        poseReward = self.computePoseReward()
-        velocityReward = self.computeVelocityReward()
-        endEffectorReward = self.computeEndEffectorReward()
-        centerOfMassReward = self.computeCenterOfMassReward()
-        totalReward = 0.65*poseReward + 0.1*velocityReward + 0.15*endEffectorReward + 0.1*centerOfMassReward
-        return totalReward
-
-    def computeGoalReward(self, frame):
-        pass
-
-
+    def setStartingPositionAndVelocity(self, inputFrame):
+        # set the agent's root position and orientation
+        p.resetBasePositionAndOrientation(
+            self.humanoidAgent,
+            posObj=inputFrame[0:3],
+            ornObj=inputFrame[3:7]
+        )
+        # set the agent's root velocity and angular velocity
+        p.resetBaseVelocity(
+            self.humanoidAgent,
+            linearVelocity=inputFrame[7:10],
+            angularVelocity=inputFrame[10:13]
+        )
+        # Set joint positions
+        revoluteJointIndices = [13, 15, 17, 19]
+        for i, joint in enumerate(self.revoluteJoints):
+            p.resetJointState(
+                self.humanoidAgent,
+                jointIndex=joint,
+                targetValue=inputFrame[revoluteJointIndices[i]],
+                targetVelocity=inputFrame[revoluteJointIndices[i]+1]
+            )
+        sphericalJointIndices = [21, 28, 35, 42, 49, 56, 63, 70]
+        p.resetJointStatesMultiDof(
+            self.humanoidAgent,
+            jointIndices=self.sphericalJoints,
+            targetValues=[inputFrame[index:index+4] for index in sphericalJointIndices],
+            targetVelocities=[inputFrame[index+4:index+7] for index in sphericalJointIndices]
+        )
+        # slight delay is needed before agent will reset. Need to investigate before removing this delay
+        time.sleep(0.005)
+        p.stepSimulation()
 
 # Debug tests
 
-clientID = p.connect(p.DIRECT)
-p.setRealTimeSimulation(False)
-test = Humanoid(clientID)
+# clientID = p.connect(p.GUI)
+# p.setRealTimeSimulation(False)
+# test = Humanoid(clientID)
 
+    # testing mocap file playback
+# for i in range(1):
+#     test.playReferenceMotion('Motions/humanoid3d_backflip.txt')
 
-# test.getJointInfo()
-# test.initializeJoints()
-for i in range(1):
-    test.playReferenceMotion('Motions/humanoid3d_backflip.txt')
-
-angle1 = p.getQuaternionFromEuler([0,0,0])
-angle2 = p.getQuaternionFromEuler([0,0.5,1.53])
-diffQuat = p.getDifferenceQuaternion(angle1,angle2)
-_, quatMag = p.getAxisAngleFromQuaternion(diffQuat)
-print(quatMag)
-# for i in range(1000):
-#     actions = [2*np.random.random() - np.random.random()] * 28
+    # testing joint control
+# actions = np.zeros(shape=(28,))
+# for index in range(8):
+#     for i in range(50):
+#         actions[3*index:3*index+3] = [2*np.random.random() - np.random.random()] *3
+#         test.applyActions(actions)
+#         time.sleep(0.02)
+# for i in range(100):
+#     actions = np.random.random(size=(28,))
 #     test.applyActions(actions)
-#     time.sleep(0.03)
+#     time.sleep(0.02)
 
 # p.disconnect()
+
