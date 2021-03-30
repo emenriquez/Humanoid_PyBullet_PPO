@@ -17,6 +17,7 @@ class Target:
     to the data upon initialization.
     '''
     def __init__(self, client, motionFile):
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         self.agentPose = np.zeros(shape=(77,))
         self.targetPose = [
             -0.26454898715019226, 0.022854402661323547, 0.9122610688209534,
@@ -52,13 +53,13 @@ class Target:
         with open(motionFile, "r") as f:
             self.targetMotion = json.load(f)
         
-        self.targetDummy = Humanoid(client)
+        self.targetDummy = Humanoid(client, target=True)
         self.targetDummyID = self.targetDummy.get_ids()
 
         # Format the mocap data with the current agent on startup
         self.processedMotionTarget = self.initializeMotionTarget()
         self.framePosition = 0
-
+ 
     def initializeMotionTarget(self):
         '''
         Convert the motion file into a format that matches the observations collected from the agent in order to compare and compute rewards.
@@ -152,7 +153,7 @@ class Target:
         return processedTargetMotion
     
     def calculateLinearVelocity(self, posStart, posEnd, deltaTime):
-        velocity = [(posStart[i] - posEnd[i])/deltaTime for i in range(len(posStart))]
+        velocity = [(posEnd[i] - posStart[i])/deltaTime for i in range(len(posStart))]
         return velocity
 
     def calculateAngularVelocity(self, ornStart, ornEnd, deltaTime):
@@ -216,13 +217,24 @@ class Target:
 
     def randomStartFrame(self):
         self.framePosition = np.random.randint(0,high=len(self.processedMotionTarget)-1)
+        self.targetPose = self.processedMotionTarget[self.framePosition]
+        self.displayTargetPose(processedFrame=self.processedMotionTarget[self.framePosition])
         return self.processedMotionTarget[self.framePosition]
 
     def nextFrame(self):
-        if self.framePosition < len(self.processedMotionTarget):
+        if self.framePosition < len(self.processedMotionTarget)-1:
             self.framePosition += 1
+            self.targetPose = self.processedMotionTarget[self.framePosition]
+            self.displayTargetPose(processedFrame=self.processedMotionTarget[self.framePosition])
         return self.processedMotionTarget[self.framePosition]
-
+    
+    def checkIfLastFrame(self):
+        return self.framePosition >= len(self.processedMotionTarget)-1
+    
+    def displayTargetPose(self, processedFrame):
+        self.targetDummy.setStartingPositionAndVelocity(processedFrame)
+        return None
+    
 # Debug tests
 # clientID = p.connect(p.DIRECT)
 # test = Target(client=clientID, motionFile='Motions/humanoid3d_backflip.txt')

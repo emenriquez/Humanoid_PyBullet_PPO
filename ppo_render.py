@@ -1,5 +1,5 @@
 import gym
-import HumanoidBasicEnv
+import Humanoid_Basic_Env
 import time
 
 from stable_baselines3 import PPO
@@ -8,7 +8,7 @@ env_name = 'HumanoidBasicEnv-v0'
 
 env = gym.make(env_name)
 
-model = PPO.load('test_ppo', env=env)
+model = PPO.load('walking_agent', env=env)
 
 # model = PPO('MlpPolicy', env, verbose=0) # Use if no training is available
 
