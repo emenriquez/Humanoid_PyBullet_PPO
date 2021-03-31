@@ -221,6 +221,12 @@ class Target:
         self.displayTargetPose(processedFrame=self.processedMotionTarget[self.framePosition])
         return self.processedMotionTarget[self.framePosition]
 
+    def restartMotion(self):
+        self.framePosition = 0
+        self.targetPose = self.processedMotionTarget[self.framePosition]
+        self.displayTargetPose(processedFrame=self.processedMotionTarget[self.framePosition])
+        return self.processedMotionTarget[self.framePosition]
+
     def nextFrame(self):
         if self.framePosition < len(self.processedMotionTarget)-1:
             self.framePosition += 1

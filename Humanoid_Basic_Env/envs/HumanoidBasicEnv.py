@@ -96,11 +96,14 @@ class HumanoidBasicEnv(gym.Env):
         self.agentID = self.agent.get_ids()
         self.target = Target(self.client, self.motionFile)
 
+        # Add friction to the plane (just in case it is not present on initialization)
+        p.changeDynamics(bodyUniqueId=self.planeID, linkIndex=-1, lateralFriction=0.9)
+
         # Initial state settings
+        self.randomizeStart = False
         self.state = None
         self.done = False
         self.rendered_img = None
-        self.touchingGround = False
         self.episode_reward = 0
 
     def seed(self, seed=None):
@@ -123,12 +126,24 @@ class HumanoidBasicEnv(gym.Env):
         # if any other link touches the ground, we assume the agent has fallen
         return any([True for point in contactPoints if point[3] != 5 and point[3] != 11])
 
+    def agentDriftedAway(self):
+        targetPos = np.array(self.target.targetPose[0:3])
+        agentPos = np.array(self.state[0:3])
+        distance = np.linalg.norm(targetPos - agentPos)
+        # Maximum distance tolerance before episode will early terminate due to agent drifting too far away
+        tolerance = 2
+        return distance > tolerance
+
     def motionCompleted(self):
         return self.target.checkIfLastFrame()
 
     def reset(self):
-        randomStart = self.target.randomStartFrame()
-        self.agent.setStartingPositionAndVelocity(inputFrame=randomStart)
+        if self.randomizeStart:
+            randomStart = self.target.randomStartFrame()
+            self.agent.setStartingPositionAndVelocity(inputFrame=randomStart)
+        else:
+            initialFrame = self.target.restartMotion()
+            self.agent.setStartingPositionAndVelocity(inputFrame=initialFrame)
         self.state = self.collectObservations()
         self.done = False
         self.episode_reward = 0
@@ -143,9 +158,9 @@ class HumanoidBasicEnv(gym.Env):
             return self.reset()
 
         # Make sure episodes don't go on forever.
-        if self.agentFallCheck():
-            reward = -1
-            self.episode_reward -= 1
+        if self.agentFallCheck() or self.agentDriftedAway():
+            reward = -0.1
+            self.episode_reward -= 0.1
             self.done = True
         elif self.motionCompleted():
             self.step_counter += 1
@@ -157,8 +172,8 @@ class HumanoidBasicEnv(gym.Env):
             self.step_counter += 1
             self.agent.applyActions(actions=action)
         
-        # Step the simulation 16 times to increment frame by deltaTime
-        for i in range(15):
+        # Step the simulation 8 times to increment frame by deltaTime
+        for i in range(8):
             p.stepSimulation()
 
         # Update state
