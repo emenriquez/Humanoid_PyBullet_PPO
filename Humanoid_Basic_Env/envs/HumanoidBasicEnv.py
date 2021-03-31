@@ -158,7 +158,7 @@ class HumanoidBasicEnv(gym.Env):
             self.agent.applyActions(actions=action)
         
         # Step the simulation 16 times to increment frame by deltaTime
-        for i in range(1):
+        for i in range(15):
             p.stepSimulation()
 
         # Update state
@@ -197,9 +197,13 @@ class HumanoidBasicEnv(gym.Env):
         self.rendered_img.set_data(rgb_array)
 
         # Add some data info to the plot to help with performance visualization
-        annotation = plt.annotate(f'Step: {self.step_counter}\nEpisode Reward: {self.episode_reward:.3f}', xy=(0,0))
+        annotation = plt.annotate(
+            f'Step: {self.step_counter}\n\
+                Episode Reward: {self.episode_reward:.3f}\n\
+                    Agent Root Position: x - {self.state[0]:.2f}, y - {self.state[1]:.2f}, z - {self.state[2]:.2f}', xy=(0,0)
+        )
         plt.draw()
-        plt.pause(0.0625)
+        plt.pause(0.03)
         
         # Remove the annotation or else it will persist and be typed over in the next step
         annotation.remove()

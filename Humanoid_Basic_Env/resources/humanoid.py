@@ -28,14 +28,14 @@ class Humanoid:
                 baseOrientation=p.getQuaternionFromEuler([1.57, 0, 0]),
                 globalScaling=0.25,
                 physicsClientId=client,
-                useFixedBase=True,
+                useFixedBase=False,
                 flags=(p.URDF_MAINTAIN_LINK_ORDER or p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
             )
         self.numJoints=p.getNumJoints(self.humanoidAgent)
         self.sphericalJoints=None
         self.revoluteJoints=None
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
-        p.setTimeStep(0.0625)
+        p.setTimeStep(1./240)
         self.initializeJoints()
         
     def get_ids(self):
@@ -161,7 +161,7 @@ class Humanoid:
         '''
         # Format actions from -1,1 to actual values.
         # New scaledAction values will fall in range of -maxForce, maxForce
-        maxForce = 0
+        maxForce = 300
         scaledActions = [action*maxForce for action in actions]
         formattedActions = []
         # condense flat array into list of list format for spherical joint control
@@ -289,7 +289,7 @@ class Humanoid:
         )
         # slight delay is needed before agent will reset. Need to investigate before removing this delay
         time.sleep(0.005)
-        p.stepSimulation()
+        # p.stepSimulation()
 
 # Debug tests
 
