@@ -7,26 +7,36 @@ import json
 # from humanoid_pose_interpolator import *
 
 class Humanoid:
-    def __init__(self, client) -> None:
-        f_name = os.path.join(os.path.dirname(__file__), 'humanoid.urdf')
+    def __init__(self, client, target=False) -> None:
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
-        self.humanoidAgent = p.loadURDF(
-            fileName=f_name,
-            basePosition=[0,1,0],
-            baseOrientation=p.getQuaternionFromEuler([1.57, 0, 0]),
-            globalScaling=0.25,
-            physicsClientId=client,
-            useFixedBase=True,
-            flags=(p.URDF_MAINTAIN_LINK_ORDER or p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
-        )
+        if target==True:
+            f_name = os.path.join(os.path.dirname(__file__), 'humanoidTarget.urdf')
+            self.humanoidAgent = p.loadURDF(
+                fileName=f_name,
+                basePosition=[0,1,0],
+                baseOrientation=p.getQuaternionFromEuler([1.57, 0, 0]),
+                globalScaling=0.25,
+                physicsClientId=client,
+                useFixedBase=False,
+                flags=(p.URDF_MAINTAIN_LINK_ORDER or p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
+            )
+        else:
+            f_name = os.path.join(os.path.dirname(__file__), 'humanoid.urdf')
+            self.humanoidAgent = p.loadURDF(
+                fileName=f_name,
+                basePosition=[0,1,0],
+                baseOrientation=p.getQuaternionFromEuler([1.57, 0, 0]),
+                globalScaling=0.25,
+                physicsClientId=client,
+                useFixedBase=True,
+                flags=(p.URDF_MAINTAIN_LINK_ORDER or p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
+            )
         self.numJoints=p.getNumJoints(self.humanoidAgent)
         self.sphericalJoints=None
         self.revoluteJoints=None
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
-        p.setTimeStep(1./240)
+        p.setTimeStep(0.0625)
         self.initializeJoints()
-        # self.interpolator = HumanoidPoseInterpolator()
-        # self.interpolator.Reset()
         
     def get_ids(self):
         return self.humanoidAgent
@@ -151,14 +161,13 @@ class Humanoid:
         '''
         # Format actions from -1,1 to actual values.
         # New scaledAction values will fall in range of -maxForce, maxForce
-        maxForce = 200000
+        maxForce = 0
         scaledActions = [action*maxForce for action in actions]
         formattedActions = []
         # condense flat array into list of list format for spherical joint control
         for i in [0,3,6,9,12,15,18,21]:
             formattedActions.append(scaledActions[i:i+3])
         formattedActions.extend(scaledActions[24:])
-
         # Set spherical joint torques
         p.setJointMotorControlMultiDofArray(
             bodyUniqueId=self.humanoidAgent,
@@ -175,7 +184,7 @@ class Humanoid:
         )
 
         # Once all actions are sent, complete by stepping the simulation forward
-        p.stepSimulation()
+        # p.stepSimulation()
 
     def playReferenceMotion(self, motionFile):
         motionFile = os.path.join(os.path.dirname(__file__), motionFile)
@@ -299,7 +308,7 @@ class Humanoid:
 #         actions[3*index:3*index+3] = [2*np.random.random() - np.random.random()] *3
 #         test.applyActions(actions)
 #         time.sleep(0.02)
-# for i in range(100):
+# for i in range(1):
 #     actions = np.random.random(size=(28,))
 #     test.applyActions(actions)
 #     time.sleep(0.02)
