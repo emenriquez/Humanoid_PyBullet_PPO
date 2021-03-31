@@ -174,6 +174,18 @@ class HumanoidBasicEnv(gym.Env):
             plt.axis('off')
             self.rendered_img = plt.imshow(np.zeros((720, 960, 4)))
 
+        # Pybullet Camera controls for rendering
+        self.view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=self.target.targetPose[0:3], # Use self.state[0:3] to track agent instead of target
+                                                            distance=4,
+                                                            yaw=60,
+                                                            pitch=-30,
+                                                            roll=0,
+                                                            upAxisIndex=2)
+        self.proj_matrix = p.computeProjectionMatrixFOV(fov=60,
+                                                     aspect=float(960) /720,
+                                                     nearVal=0.1,
+                                                     farVal=100.0)
+
         # Display image
         (_, _, px, _, _) = p.getCameraImage(width=960,
                                               height=720,
