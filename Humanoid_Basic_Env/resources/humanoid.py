@@ -17,7 +17,7 @@ class Humanoid:
                 baseOrientation=p.getQuaternionFromEuler([1.57, 0, 0]),
                 globalScaling=0.25,
                 physicsClientId=client,
-                useFixedBase=False,
+                useFixedBase=True,
                 flags=(p.URDF_MAINTAIN_LINK_ORDER or p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
             )
         else:
@@ -28,7 +28,7 @@ class Humanoid:
                 baseOrientation=p.getQuaternionFromEuler([1.57, 0, 0]),
                 globalScaling=0.25,
                 physicsClientId=client,
-                useFixedBase=False,
+                useFixedBase=True,
                 flags=(p.URDF_MAINTAIN_LINK_ORDER or p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
             )
         self.numJoints=p.getNumJoints(self.humanoidAgent)
@@ -62,7 +62,7 @@ class Humanoid:
                     jointIndex=joint,
                     controlMode=p.POSITION_CONTROL,
                     targetVelocity=[0,0,0],
-                    force=[0,0,0]
+                    force=[10,10,10]
                 )
                 self.sphericalJoints.append(joint)
             elif jointType == 0:
@@ -71,7 +71,7 @@ class Humanoid:
                     jointIndex=joint,
                     controlMode=p.VELOCITY_CONTROL,
                     targetVelocity=0,
-                    force=0
+                    force=10
                 )
                 self.revoluteJoints.append(joint)
         # print(self.revoluteJoints, self.sphericalJoints)
@@ -161,7 +161,7 @@ class Humanoid:
         '''
         # Format actions from -1,1 to actual values.
         # New scaledAction values will fall in range of -maxForce, maxForce
-        maxForce = 300
+        maxForce = 3
         scaledActions = [action*maxForce for action in actions]
         formattedActions = []
         # condense flat array into list of list format for spherical joint control

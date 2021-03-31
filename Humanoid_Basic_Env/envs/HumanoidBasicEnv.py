@@ -94,13 +94,13 @@ class HumanoidBasicEnv(gym.Env):
         self.planeID = self.plane.get_ids()
         self.agent = Humanoid(self.client)
         self.agentID = self.agent.get_ids()
-        self.target = Target(self.client, self.motionFile)
+        self.target = Target(self.client, self.motionFile, staticTarget=True)
 
         # Add friction to the plane (just in case it is not present on initialization)
         p.changeDynamics(bodyUniqueId=self.planeID, linkIndex=-1, lateralFriction=0.9)
 
         # Initial state settings
-        self.randomizeStart = False
+        self.randomizeStart = True
         self.state = None
         self.done = False
         self.rendered_img = None
@@ -162,7 +162,7 @@ class HumanoidBasicEnv(gym.Env):
             reward = -0.1
             self.episode_reward -= 0.1
             self.done = True
-        elif self.motionCompleted():
+        elif self.motionCompleted() or self.step_counter > 100:
             self.step_counter += 1
             self.done = True
         else:
@@ -173,7 +173,7 @@ class HumanoidBasicEnv(gym.Env):
             self.agent.applyActions(actions=action)
         
         # Step the simulation 8 times to increment frame by deltaTime
-        for i in range(8):
+        for i in range(1):
             p.stepSimulation()
 
         # Update state
