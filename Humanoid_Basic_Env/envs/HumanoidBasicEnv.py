@@ -162,8 +162,7 @@ class HumanoidBasicEnv(gym.Env):
             reward = -0.1
             self.episode_reward -= 0.1
             self.done = True
-        elif self.motionCompleted() or self.step_counter > 100:
-            self.step_counter += 1
+        elif self.motionCompleted() or self.step_counter >= 99:
             self.done = True
         else:
             pose = self.agent.collectObservations()
@@ -172,14 +171,16 @@ class HumanoidBasicEnv(gym.Env):
             self.step_counter += 1
             self.agent.applyActions(actions=action)
         
-        # Step the simulation 8 times to increment frame by deltaTime
-        for i in range(1):
-            p.stepSimulation()
+            # Step the simulation 8 times to increment frame by deltaTime
+            for i in range(1):
+                p.stepSimulation()
+
+            # move target to the next frame pose
+            self.target.nextFrame()
 
         # Update state
         self.state = self.collectObservations()
-        # move target to the next frame pose
-        self.target.nextFrame()
+
 
         return np.array(self.state, dtype=np.float32), np.array(reward), self.done, dict()
     

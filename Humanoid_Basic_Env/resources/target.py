@@ -252,19 +252,19 @@ class Target:
             _, quatMag = p.getAxisAngleFromQuaternion(diffQuat)
             # value is rounded because the calculations even for the same quaternions sometimes produce small errors
             totalQuatDistance += np.around(quatMag, decimals=2)
-        return np.exp(-2*totalQuatDistance)
+        return np.exp(-0.2*totalQuatDistance) # original value is -2*distance
     def computeVelocityReward(self):
         velocityIndices = [7, 25, 32, 39, 46, 53, 60, 67, 74]
         totalVelocityDifference = sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in velocityIndices])
-        return np.exp(-0.1*totalVelocityDifference)
+        return np.exp(-0.1*totalVelocityDifference) # original value is -1*distance
     def computeEndEffectorReward(self):
         totalDistance = sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in [77, 80, 83, 86]])
-        return np.exp(-40*totalDistance)
+        return np.exp(-4*totalDistance) # original value is -40*distance
     def computeCenterOfMassReward(self):
         agentRoot = self.agentPose[0:3]
         targetRoot = self.targetPose[0:3]
         distance = np.linalg.norm(np.array(targetRoot) - np.array(agentRoot))
-        return np.exp(-10*distance)
+        return np.exp(-1*distance) # original value is -10*distance
 
     def totalImitationReward(self, agentPose):
         self.agentPose = agentPose

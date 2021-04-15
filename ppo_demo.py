@@ -17,7 +17,7 @@ model = PPO('MlpPolicy', env, policy_kwargs=policy_kwargs, verbose=0, tensorboar
 # Save the best model periodically during training
 bestModelCallback = EvalCallback(eval_env=eval_env, eval_freq=10000, log_path='./walk/logs/', best_model_save_path='./walk/logs/')
 
-model.learn(total_timesteps=100000, eval_freq=4000, eval_env=eval_env, tb_log_name='static_run', callback=bestModelCallback)
+model.learn(total_timesteps=200000, eval_freq=4000, eval_env=eval_env, tb_log_name='static_run', callback=bestModelCallback)
 model.save('static_agent')
 
 env.close()

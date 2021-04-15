@@ -62,7 +62,7 @@ class Humanoid:
                     jointIndex=joint,
                     controlMode=p.POSITION_CONTROL,
                     targetVelocity=[0,0,0],
-                    force=[10,10,10]
+                    force=[1,1,1]
                 )
                 self.sphericalJoints.append(joint)
             elif jointType == 0:
@@ -71,7 +71,7 @@ class Humanoid:
                     jointIndex=joint,
                     controlMode=p.VELOCITY_CONTROL,
                     targetVelocity=0,
-                    force=10
+                    force=1
                 )
                 self.revoluteJoints.append(joint)
         # print(self.revoluteJoints, self.sphericalJoints)
@@ -161,7 +161,7 @@ class Humanoid:
         '''
         # Format actions from -1,1 to actual values.
         # New scaledAction values will fall in range of -maxForce, maxForce
-        maxForce = 3
+        maxForce = 10
         scaledActions = [action*maxForce for action in actions]
         formattedActions = []
         # condense flat array into list of list format for spherical joint control
