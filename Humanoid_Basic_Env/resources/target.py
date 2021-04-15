@@ -16,7 +16,8 @@ class Target:
     Mocap files include positions at time intervals, so this will also add velocity information
     to the data upon initialization.
     '''
-    def __init__(self, client, motionFile):
+    def __init__(self, client, motionFile, staticTarget=False):
+        self.staticTarget = staticTarget
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         self.agentPose = np.zeros(shape=(77,))
         self.targetPose = [
@@ -57,7 +58,10 @@ class Target:
         self.targetDummyID = self.targetDummy.get_ids()
 
         # Format the mocap data with the current agent on startup
-        self.processedMotionTarget = self.initializeMotionTarget()
+        if self.staticTarget:
+            self.processedMotionTarget = self.initializeStaticTarget()
+        else:
+            self.processedMotionTarget = self.initializeMotionTarget()
         self.framePosition = 0
  
     def initializeMotionTarget(self):
@@ -151,7 +155,66 @@ class Target:
             # print(f'{frameIndex}\t {self.totalImitationReward(agentPose=processedTargetMotion[-1]):.4f}')
 
         return processedTargetMotion
-    
+
+    def initializeStaticTarget(self):
+        '''
+        Convert the motion file into a format that matches the observations collected from the agent in order to compare and compute rewards.
+        '''
+        JointFrameMapIndices = [
+            0,                  #root
+            [9, 10, 11, 8],     #chest
+            [13, 14, 15, 12],   #neck
+            [17, 18, 19, 16],   #rHip
+            20,                 #rKnee
+            [22, 23, 24, 21],   #rAnkle
+            [26, 27, 28, 25],   #rShoulder
+            29,                 #rElbow
+            0,                  #rWrist
+            [31, 32, 33, 30],   #lHip
+            34,                 #lKnee
+            [36, 37, 38, 35],   #lAnkle
+            [40, 41, 42, 39],   #lShoulder
+            43,                 #lElbow
+            0,                  #lWrist
+        ]
+
+        processedTargetMotion = []
+
+        targetFrames = self.targetMotion['Frames']
+        for frameIndex in range(len(targetFrames)-1):
+            # Calculate First Frame
+            targetPos_orig = [targetFrames[frameIndex][i] for i in [1, 2, 3]]
+            targetOrn_orig = targetFrames[frameIndex][5:8] + [targetFrames[frameIndex][4]]
+            # transform the position and orientation to have z-axis upward
+            y2zPos = [0, 0, 0.0]
+            y2zOrn = p.getQuaternionFromEuler([1.57, 0, 0])
+            basePos, baseOrn = p.multiplyTransforms(y2zPos, y2zOrn, targetPos_orig, targetOrn_orig)
+            # set the agent's root position and orientation
+            p.resetBasePositionAndOrientation(
+                self.targetDummyID,
+                posObj=basePos,
+                ornObj=baseOrn
+            )
+
+            # Set joint positions
+            for joint in self.targetDummy.revoluteJoints:
+                p.resetJointState(
+                    self.targetDummyID,
+                    jointIndex=joint,
+                    targetValue=targetFrames[frameIndex][JointFrameMapIndices[joint]]
+                )
+            for joint in self.targetDummy.sphericalJoints:
+                p.resetJointStateMultiDof(
+                    self.targetDummyID,
+                    jointIndex=joint,
+                    targetValue=[targetFrames[frameIndex][i] for i in JointFrameMapIndices[joint]]
+                )
+            currentFrame = self.targetDummy.collectObservations()
+
+            processedTargetMotion.append(currentFrame)
+
+        return processedTargetMotion
+
     def calculateLinearVelocity(self, posStart, posEnd, deltaTime):
         velocity = [(posEnd[i] - posStart[i])/deltaTime for i in range(len(posStart))]
         return velocity
@@ -189,19 +252,19 @@ class Target:
             _, quatMag = p.getAxisAngleFromQuaternion(diffQuat)
             # value is rounded because the calculations even for the same quaternions sometimes produce small errors
             totalQuatDistance += np.around(quatMag, decimals=2)
-        return np.exp(-2*totalQuatDistance)
+        return np.exp(-0.2*totalQuatDistance) # original value is -2*distance
     def computeVelocityReward(self):
         velocityIndices = [7, 25, 32, 39, 46, 53, 60, 67, 74]
         totalVelocityDifference = sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in velocityIndices])
-        return np.exp(-0.1*totalVelocityDifference)
+        return np.exp(-0.1*totalVelocityDifference) # original value is -1*distance
     def computeEndEffectorReward(self):
         totalDistance = sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in [77, 80, 83, 86]])
-        return np.exp(-40*totalDistance)
+        return np.exp(-4*totalDistance) # original value is -40*distance
     def computeCenterOfMassReward(self):
         agentRoot = self.agentPose[0:3]
         targetRoot = self.targetPose[0:3]
         distance = np.linalg.norm(np.array(targetRoot) - np.array(agentRoot))
-        return np.exp(-10*distance)
+        return np.exp(-1*distance) # original value is -10*distance
 
     def totalImitationReward(self, agentPose):
         self.agentPose = agentPose
@@ -221,7 +284,16 @@ class Target:
         self.displayTargetPose(processedFrame=self.processedMotionTarget[self.framePosition])
         return self.processedMotionTarget[self.framePosition]
 
+    def restartMotion(self):
+        self.framePosition = 0
+        self.targetPose = self.processedMotionTarget[self.framePosition]
+        self.displayTargetPose(processedFrame=self.processedMotionTarget[self.framePosition])
+        return self.processedMotionTarget[self.framePosition]
+
     def nextFrame(self):
+        if self.staticTarget:
+            self.displayTargetPose(processedFrame=self.processedMotionTarget[self.framePosition])
+            return self.processedMotionTarget[self.framePosition]
         if self.framePosition < len(self.processedMotionTarget)-1:
             self.framePosition += 1
             self.targetPose = self.processedMotionTarget[self.framePosition]
@@ -237,40 +309,9 @@ class Target:
     
 # Debug tests
 # clientID = p.connect(p.DIRECT)
-# test = Target(client=clientID, motionFile='Motions/humanoid3d_backflip.txt')
+# test = Target(client=clientID, motionFile='Motions/humanoid3d_backflip.txt', staticTarget=True)
 
 # print(test.randomStartFrame())
-
-# testPose2 = [
-#     -0.35500800609588623, 0.02783391624689102, 1.0422571897506714,
-#     0.6223108303817404, -0.37940458264375937, 0.32550806494422807, 0.6023503073086023,
-#     0.0, 0.0, 0.0,
-#     0.0, 0.0, 0.0,
-#     -1.304763, 0.0,
-#     1.049183, 0.0,
-#     -1.455006, 0.0,
-#     1.040217, 0.0,
-#     -0.01234700117334175, 0.017517001664649506, -0.02341500222513947, 0.9994960949826182,
-#     0.0, 0.0, 0.0,
-#     0.008414392760023457, -0.02556603748749739, -0.2258530502836992, 0.9737894923438108,
-#     0.0, 0.0, 0.0,
-#     -0.157774963995284, -0.08523898054821115, 0.08140198142382576, 0.9804157762662042,
-#     0.0, 0.0, 0.0,
-#     -0.02029632723630169, 0.17125192259441938, -0.16635012950772768, 0.9708699565447446,
-#     0.0, 0.0, 0.0,
-#     -0.5675199873815431, -0.28422662422837225, 0.285825698816142, 0.7179414738670981,
-#     0.0, 0.0, 0.0,
-#     0.10870401641979728, 0.07920501196395756, 0.07324301106339429, 0.9882031492685912,
-#     0.0, 0.0, 0.0,
-#     0.02029632723630169, -0.17125192259441938, -0.16635012950772768, 0.9708699565447446,
-#     0.0, 0.0, 0.0,
-#     0.6554179738992906, 0.2886789885039369, 0.1664349933720594, 0.6777839730086095,
-#     0.0, 0.0, 0.0,
-#     0.0018463717634861695, -0.1512310135444939, 0.43374322483901195,
-#     -0.7804912276107155, -0.5604335921107495, 1.4655383360806236,
-#     -0.04402742031443441, 0.17440317058074054, 0.45523042153975224,
-#     -0.7658689070738836, 0.6593761167752237, 1.4336295342435508
-# ]
 
 # result = test.initializeMotionTarget()
 

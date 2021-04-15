@@ -7,7 +7,8 @@ class Plane:
         f_name = os.path.join(os.path.dirname(__file__), 'simpleplane.urdf')
         self.planeID = p.loadURDF(fileName=f_name,
                    basePosition=[0, 0, 0],
-                   physicsClientId=client)
+                   physicsClientId=client,
+                   useFixedBase=True)
     
     def get_ids(self):
         return self.planeID

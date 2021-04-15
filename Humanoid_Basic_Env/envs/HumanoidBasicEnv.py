@@ -94,13 +94,16 @@ class HumanoidBasicEnv(gym.Env):
         self.planeID = self.plane.get_ids()
         self.agent = Humanoid(self.client)
         self.agentID = self.agent.get_ids()
-        self.target = Target(self.client, self.motionFile)
+        self.target = Target(self.client, self.motionFile, staticTarget=True)
+
+        # Add friction to the plane (just in case it is not present on initialization)
+        p.changeDynamics(bodyUniqueId=self.planeID, linkIndex=-1, lateralFriction=0.9)
 
         # Initial state settings
+        self.randomizeStart = True
         self.state = None
         self.done = False
         self.rendered_img = None
-        self.touchingGround = False
         self.episode_reward = 0
 
     def seed(self, seed=None):
@@ -123,12 +126,24 @@ class HumanoidBasicEnv(gym.Env):
         # if any other link touches the ground, we assume the agent has fallen
         return any([True for point in contactPoints if point[3] != 5 and point[3] != 11])
 
+    def agentDriftedAway(self):
+        targetPos = np.array(self.target.targetPose[0:3])
+        agentPos = np.array(self.state[0:3])
+        distance = np.linalg.norm(targetPos - agentPos)
+        # Maximum distance tolerance before episode will early terminate due to agent drifting too far away
+        tolerance = 2
+        return distance > tolerance
+
     def motionCompleted(self):
         return self.target.checkIfLastFrame()
 
     def reset(self):
-        randomStart = self.target.randomStartFrame()
-        self.agent.setStartingPositionAndVelocity(inputFrame=randomStart)
+        if self.randomizeStart:
+            randomStart = self.target.randomStartFrame()
+            self.agent.setStartingPositionAndVelocity(inputFrame=randomStart)
+        else:
+            initialFrame = self.target.restartMotion()
+            self.agent.setStartingPositionAndVelocity(inputFrame=initialFrame)
         self.state = self.collectObservations()
         self.done = False
         self.episode_reward = 0
@@ -143,12 +158,11 @@ class HumanoidBasicEnv(gym.Env):
             return self.reset()
 
         # Make sure episodes don't go on forever.
-        if self.agentFallCheck():
-            reward = -1
-            self.episode_reward -= 1
+        if self.agentFallCheck() or self.agentDriftedAway():
+            reward = -0.1
+            self.episode_reward -= 0.1
             self.done = True
-        elif self.motionCompleted():
-            self.step_counter += 1
+        elif self.motionCompleted() or self.step_counter >= 99:
             self.done = True
         else:
             pose = self.agent.collectObservations()
@@ -157,14 +171,16 @@ class HumanoidBasicEnv(gym.Env):
             self.step_counter += 1
             self.agent.applyActions(actions=action)
         
-        # Step the simulation 16 times to increment frame by deltaTime
-        for i in range(1):
-            p.stepSimulation()
+            # Step the simulation 8 times to increment frame by deltaTime
+            for i in range(1):
+                p.stepSimulation()
+
+            # move target to the next frame pose
+            self.target.nextFrame()
 
         # Update state
         self.state = self.collectObservations()
-        # move target to the next frame pose
-        self.target.nextFrame()
+
 
         return np.array(self.state, dtype=np.float32), np.array(reward), self.done, dict()
     
@@ -197,9 +213,13 @@ class HumanoidBasicEnv(gym.Env):
         self.rendered_img.set_data(rgb_array)
 
         # Add some data info to the plot to help with performance visualization
-        annotation = plt.annotate(f'Step: {self.step_counter}\nEpisode Reward: {self.episode_reward:.3f}', xy=(0,0))
+        annotation = plt.annotate(
+            f'Step: {self.step_counter}\n\
+                Episode Reward: {self.episode_reward:.3f}\n\
+                    Agent Root Position: x - {self.state[0]:.2f}, y - {self.state[1]:.2f}, z - {self.state[2]:.2f}', xy=(0,0)
+        )
         plt.draw()
-        plt.pause(0.0625)
+        plt.pause(0.03)
         
         # Remove the annotation or else it will persist and be typed over in the next step
         annotation.remove()

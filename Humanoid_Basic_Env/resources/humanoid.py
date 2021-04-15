@@ -17,7 +17,7 @@ class Humanoid:
                 baseOrientation=p.getQuaternionFromEuler([1.57, 0, 0]),
                 globalScaling=0.25,
                 physicsClientId=client,
-                useFixedBase=False,
+                useFixedBase=True,
                 flags=(p.URDF_MAINTAIN_LINK_ORDER or p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
             )
         else:
@@ -35,7 +35,7 @@ class Humanoid:
         self.sphericalJoints=None
         self.revoluteJoints=None
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
-        p.setTimeStep(0.0625)
+        p.setTimeStep(1./240)
         self.initializeJoints()
         
     def get_ids(self):
@@ -62,7 +62,7 @@ class Humanoid:
                     jointIndex=joint,
                     controlMode=p.POSITION_CONTROL,
                     targetVelocity=[0,0,0],
-                    force=[0,0,0]
+                    force=[1,1,1]
                 )
                 self.sphericalJoints.append(joint)
             elif jointType == 0:
@@ -71,7 +71,7 @@ class Humanoid:
                     jointIndex=joint,
                     controlMode=p.VELOCITY_CONTROL,
                     targetVelocity=0,
-                    force=0
+                    force=1
                 )
                 self.revoluteJoints.append(joint)
         # print(self.revoluteJoints, self.sphericalJoints)
@@ -161,7 +161,7 @@ class Humanoid:
         '''
         # Format actions from -1,1 to actual values.
         # New scaledAction values will fall in range of -maxForce, maxForce
-        maxForce = 0
+        maxForce = 10
         scaledActions = [action*maxForce for action in actions]
         formattedActions = []
         # condense flat array into list of list format for spherical joint control
@@ -289,7 +289,7 @@ class Humanoid:
         )
         # slight delay is needed before agent will reset. Need to investigate before removing this delay
         time.sleep(0.005)
-        p.stepSimulation()
+        # p.stepSimulation()
 
 # Debug tests
 
