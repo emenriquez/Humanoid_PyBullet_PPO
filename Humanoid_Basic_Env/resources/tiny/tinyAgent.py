@@ -6,7 +6,7 @@ import json
 
 # from humanoid_pose_interpolator import *
 
-class tinyAgent:
+class TinyAgent:
     def __init__(self, client, target=False) -> None:
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         if target==True:
@@ -129,45 +129,30 @@ class tinyAgent:
     def applyActions(self, actions):
         '''
         Action indices should correspond to the following:
-              [0-2] - chest            Type: SPHERICAL
-              [3-5] - neck             Type: SPHERICAL
-              [6-8] - right_hip        Type: SPHERICAL
-             [9-11] - right_ankle      Type: SPHERICAL
-            [12-14] - right_shoulder   Type: SPHERICAL
-            [15-17] - left_hip         Type: SPHERICAL
-            [18-20] - left_ankle       Type: SPHERICAL
-            [21-23] - left_shoulder    Type: SPHERICAL
-               [24] - right_knee       Type: REVOLUTE
-               [25] - right_elbow      Type: REVOLUTE
-               [26] - left_knee        Type: REVOLUTE
-               [27] - left_elbow       Type: REVOLUTE
+              [0-2] - right_hip        Type: SPHERICAL
         '''
         # Format actions from -1,1 to actual values.
         # New scaledAction values will fall in range of -maxForce, maxForce
-        maxForce = 10
+        maxForce = 100
         scaledActions = [action*maxForce for action in actions]
         formattedActions = []
         # condense flat array into list of list format for spherical joint control
-        for i in [0,3,6,9,12,15,18,21]:
+        for i in [0]:
             formattedActions.append(scaledActions[i:i+3])
-        formattedActions.extend(scaledActions[24:])
         # Set spherical joint torques
         p.setJointMotorControlMultiDofArray(
             bodyUniqueId=self.humanoidAgent,
             jointIndices=self.sphericalJoints,
             controlMode=p.TORQUE_CONTROL,
-            forces=formattedActions[:8]
+            forces=formattedActions[:]
         )
         # Set revolute joint torques (Commands are different)
-        p.setJointMotorControlArray(
-            bodyUniqueId=self.humanoidAgent,
-            jointIndices=self.revoluteJoints,
-            controlMode=p.TORQUE_CONTROL,
-            forces=formattedActions[8:]
-        )
-
-        # Once all actions are sent, complete by stepping the simulation forward
-        # p.stepSimulation()
+        # p.setJointMotorControlArray(
+        #     bodyUniqueId=self.humanoidAgent,
+        #     jointIndices=self.revoluteJoints,
+        #     controlMode=p.TORQUE_CONTROL,
+        #     forces=formattedActions[8:]
+        # )
 
     def playReferenceMotion(self, motionFile):
         motionFile = os.path.join(os.path.dirname(__file__), motionFile)
@@ -235,7 +220,7 @@ class tinyAgent:
                 p.resetJointStateMultiDof(
                     self.humanoidAgent,
                     jointIndex=joint,
-                    targetValue=[frame[i] for i in JointFrameMapIndices[joint]]
+                    targetValue=[frame[i] for i in JointFrameMapIndices[3]]
                 )
             for i in range(16):
                 p.stepSimulation()
@@ -255,15 +240,15 @@ class tinyAgent:
             angularVelocity=inputFrame[10:13]
         )
         # Set joint positions
-        revoluteJointIndices = [13, 15, 17, 19]
-        for i, joint in enumerate(self.revoluteJoints):
-            p.resetJointState(
-                self.humanoidAgent,
-                jointIndex=joint,
-                targetValue=inputFrame[revoluteJointIndices[i]],
-                targetVelocity=inputFrame[revoluteJointIndices[i]+1]
-            )
-        sphericalJointIndices = [21, 28, 35, 42, 49, 56, 63, 70]
+        # revoluteJointIndices = [13, 15, 17, 19]
+        # for i, joint in enumerate(self.revoluteJoints):
+        #     p.resetJointState(
+        #         self.humanoidAgent,
+        #         jointIndex=joint,
+        #         targetValue=inputFrame[revoluteJointIndices[i]],
+        #         targetVelocity=inputFrame[revoluteJointIndices[i]+1]
+        #     )
+        sphericalJointIndices = [13]
         p.resetJointStatesMultiDof(
             self.humanoidAgent,
             jointIndices=self.sphericalJoints,
@@ -272,31 +257,29 @@ class tinyAgent:
         )
         # slight delay is needed before agent will reset. Need to investigate before removing this delay
         time.sleep(0.005)
-        # p.stepSimulation()
 
 # Debug tests
 
-clientID = p.connect(p.GUI)
-p.setRealTimeSimulation(False)
-test = tinyAgent(clientID)
+# clientID = p.connect(p.GUI)
+# p.setRealTimeSimulation(False)
+# test = tinyAgent(clientID)
 
-print(test.collectObservations())
 
 #     # testing mocap file playback
 # for i in range(1):
-#     test.playReferenceMotion('../Motions/humanoid3d_backflip.txt')
+#     test.playReferenceMotion('../Motions/humanoid3d_dance_a.txt')
 
     # testing joint control
-# actions = np.zeros(shape=(28,))
-# for index in range(8):
-#     for i in range(50):
-#         actions[3*index:3*index+3] = [2*np.random.random() - np.random.random()] *3
-#         test.applyActions(actions)
-#         time.sleep(0.02)
-# for i in range(1):
-#     actions = np.random.random(size=(28,))
+# for i in range(100):
+#     actions = 2*np.random.random(size=(3,)) - 1
 #     test.applyActions(actions)
 #     time.sleep(0.02)
+#     p.stepSimulation()
+#     print(
+#         p.getJointStateMultiDof(
+#         bodyUniqueId=test.get_ids(),
+#         jointIndex=1
+#     )[:2])
 
 # p.disconnect()
 

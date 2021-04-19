@@ -1,3 +1,4 @@
+from Humanoid_Basic_Env.resources.tiny.tinyAgent import TinyAgent
 import pybullet as p
 import os
 import numpy as np
@@ -7,10 +8,10 @@ import json
 from sys import path
 path.append(".")
 
-from Humanoid_Basic_Env.resources.humanoid import Humanoid
+from Humanoid_Basic_Env.resources.tiny.tinyAgent import TinyAgent
 
 
-class Target:
+class TinyTarget:
     '''
     Tracks and calculates the target pose that the agent should be attempting to replicate.
     Mocap files include positions at time intervals, so this will also add velocity information
@@ -20,41 +21,12 @@ class Target:
         self.staticTarget = staticTarget
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         self.agentPose = np.zeros(shape=(77,))
-        self.targetPose = [
-            -0.26454898715019226, 0.022854402661323547, 0.9122610688209534,
-            0.6474829034058529, -0.29051448629257354, 0.2797007736899504, 0.6466333584408804,
-            0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0,
-            -0.69534, 0.0,
-            0.867543, 0.0,
-            -0.733329, 0.0,
-            0.947101, 0.0,
-            -0.015759001331352007, 0.009407000794722275, -0.0057410004850112235, 0.9998150844663816,
-            0.0, 0.0, 0.0,
-            0.003101813040613037, -0.031763325735139306, -0.24121322629597997, 0.9699472405002186,
-            0.0, 0.0, 0.0,
-            -0.11787694094614279, -0.11500194238645632, -0.10483494747990599, 0.9807595086602051,
-            0.0, 0.0, 0.0,
-            -0.02001800984225732, 0.023144011379218874, -0.22142810886958508, 0.9746964792291358,
-            0.0, 0.0, 0.0,
-            -0.5642888606830595, -0.0143471321709281, 0.5323338844841742, 0.6308667663916643,
-            0.0, 0.0, 0.0,
-            0.11165900540256528, 0.09369100453319251, -0.09715500470079644, 0.9845380476363823,
-            0.0, 0.0, 0.0,
-            0.02001800984225732, -0.023144011379218874, -0.22142810886958508, 0.9746964792291358,
-            0.0, 0.0, 0.0,
-            0.7851171556608757, -0.013963002768368036, 0.416618082600584, 0.45806709081845176,
-            0.0, 0.0, 0.0,
-            -0.04338079765310836, -0.15550348262029812, 0.11769126614205666,
-            -0.5504272207179463, -0.3467609398159516, 1.659535929062007,
-            -0.04108051249642725, 0.20917186490503967, 0.12540074110919452,
-            -0.6488312005607257, 0.3900464487042496, 1.6567469444044791
-            ]
-        motionFile = os.path.join(os.path.dirname(__file__), motionFile)
+        self.targetPose = [-0.22032800316810608, 0.004294916521757841, 0.6617388129234314, 0.7039509129823992, 0.16629285435255795, -0.1374280545944393, 0.6766929351728991, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.374817, 0.0, 0.179283, 0.0, -1.35178, 0.0, 0.244704, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, 0.08092368212796099, -0.08589996560423413, 0.10751054955181422, -0.14534513385760567, -0.24799329812892978, 1.4415175836034657, 0.08382827858824551, 0.08317185385017556, 0.11371258083657892, -0.14028942157236113, 0.11820706621011437, 1.4564192379937035]
+        motionFile = os.path.join(os.path.dirname(__file__), '../', motionFile)
         with open(motionFile, "r") as f:
             self.targetMotion = json.load(f)
         
-        self.targetDummy = Humanoid(client, target=True)
+        self.targetDummy = TinyAgent(client, target=True)
         self.targetDummyID = self.targetDummy.get_ids()
 
         # Format the mocap data with the current agent on startup
@@ -115,7 +87,7 @@ class Target:
                 p.resetJointStateMultiDof(
                     self.targetDummyID,
                     jointIndex=joint,
-                    targetValue=[targetFrames[frameIndex][i] for i in JointFrameMapIndices[joint]]
+                    targetValue=[targetFrames[frameIndex][i] for i in JointFrameMapIndices[3]]
                 )
             currentFrame = self.targetDummy.collectObservations()
             deltaTime = targetFrames[frameIndex][0]
@@ -145,7 +117,7 @@ class Target:
                     p.resetJointStateMultiDof(
                         self.targetDummyID,
                         jointIndex=joint,
-                        targetValue=[targetFrames[frameIndex+1][i] for i in JointFrameMapIndices[joint]]
+                        targetValue=[targetFrames[frameIndex+1][i] for i in JointFrameMapIndices[3]]
                     )
                 nextFrame = self.targetDummy.collectObservations()
 
@@ -207,7 +179,7 @@ class Target:
                 p.resetJointStateMultiDof(
                     self.targetDummyID,
                     jointIndex=joint,
-                    targetValue=[targetFrames[frameIndex][i] for i in JointFrameMapIndices[joint]]
+                    targetValue=[targetFrames[frameIndex][i] for i in JointFrameMapIndices[3]]
                 )
             currentFrame = self.targetDummy.collectObservations()
 
@@ -235,17 +207,17 @@ class Target:
         # base angular velocities
         processedFrame[10:13] = self.calculateAngularVelocity(frame[3:7], nextFrame[3:7], deltaTime)
         # 1D joint velocities
-        for i in [13, 15, 17, 19]:
+        for i in []:
             processedFrame[i+1] = self.calculateLinearVelocity([frame[i]], [nextFrame[i]], deltaTime)[0]
         # Angular Velocities from Quaternions
-        for i in [21, 28, 35, 42, 49, 56, 63, 70]:
+        for i in [13]:
             processedFrame[i+4:i+7] = self.calculateAngularVelocity(frame[i:i+4], nextFrame[i:i+4], deltaTime)
 
         return processedFrame
 
     def computePoseReward(self):
         totalQuatDistance = 0
-        for i in [3, 21, 28, 35, 42, 49, 56, 63, 70]:
+        for i in [3, 13]:
             rotation1 = self.targetPose[i:i+4]
             rotation2 = self.agentPose[i:i+4]
             diffQuat = p.getDifferenceQuaternion(rotation1,rotation2)
@@ -254,12 +226,12 @@ class Target:
             totalQuatDistance += np.around(quatMag, decimals=2)
         return np.exp(-0.2*totalQuatDistance) # original value is -2*distance
     def computeVelocityReward(self):
-        velocityIndices = [7, 25, 32, 39, 46, 53, 60, 67, 74]
+        velocityIndices = [17]
         totalVelocityDifference = sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in velocityIndices])
         return np.exp(-0.1*totalVelocityDifference) # original value is -1*distance
     def computeEndEffectorReward(self):
-        totalDistance = sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in [77, 80, 83, 86]])
-        return np.exp(-4*totalDistance) # original value is -40*distance
+        # totalDistance = sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in [77, 80, 83, 86]])
+        return 1 # original value is -40*distance
     def computeCenterOfMassReward(self):
         agentRoot = self.agentPose[0:3]
         targetRoot = self.targetPose[0:3]
@@ -272,7 +244,7 @@ class Target:
         velocityReward = self.computeVelocityReward()
         endEffectorReward = self.computeEndEffectorReward()
         centerOfMassReward = self.computeCenterOfMassReward()
-        totalReward = 0.65*poseReward + 0.1*velocityReward + 0.15*endEffectorReward + 0.1*centerOfMassReward
+        totalReward = 0.76*poseReward + 0.12*velocityReward + 0*endEffectorReward + 0.12*centerOfMassReward # original weights are 0.65, 0.1, 0.15, 0.1
         return totalReward
 
     def computeGoalReward(self, frame):
@@ -309,10 +281,10 @@ class Target:
     
 # Debug tests
 # clientID = p.connect(p.DIRECT)
-# test = Target(client=clientID, motionFile='Motions/humanoid3d_backflip.txt', staticTarget=True)
+# test = Target(client=clientID, motionFile='../Motions/humanoid3d_backflip.txt', staticTarget=True)
 
-# print(test.randomStartFrame())
+# test.randomStartFrame()
 
 # result = test.initializeMotionTarget()
 
-# print(f'total imitation reward: {test.totalImitationReward(agentPose=testPose2):.4f}')
+# print(test.totalImitationReward(agentPose=test.processedMotionTarget[0]))

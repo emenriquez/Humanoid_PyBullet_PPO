@@ -10,9 +10,11 @@ import matplotlib.pyplot as plt
 from sys import path
 path.append(".")
 
-from Humanoid_Basic_Env.resources.humanoid import Humanoid
-from Humanoid_Basic_Env.resources.target import Target
 from Humanoid_Basic_Env.resources.plane import Plane
+
+# For Tiny version test assets
+from Humanoid_Basic_Env.resources.tiny.tinyAgent import TinyAgent
+from Humanoid_Basic_Env.resources.tiny.tinyTarget import TinyTarget
 
 class HumanoidBasicEnv(gym.Env):
     '''
@@ -25,8 +27,8 @@ class HumanoidBasicEnv(gym.Env):
 
         # Actions
         self.action_space = gym.spaces.box.Box(
-            low=np.array([-1]*28, dtype=np.float32),
-            high=np.array([1]*28, dtype=np.float32)
+            low=np.array([-1]*3, dtype=np.float32),
+            high=np.array([1]*3, dtype=np.float32)
         )  
 
         # Observations
@@ -35,30 +37,8 @@ class HumanoidBasicEnv(gym.Env):
             -1, -1, -1, -1,
             -15, -15, -15,
             -15, -15, -15,
-            -1, -15,
-            -1, -15,
-            -1, -15,
-            -1, -15,
             -1, -1, -1, -1,
-            -15, -15, -15,
-            -1, -1, -1, -1,
-            -15, -15, -15,
-            -1, -1, -1, -1,
-            -15, -15, -15,
-            -1, -1, -1, -1,
-            -15, -15, -15,
-            -1, -1, -1, -1,
-            -15, -15, -15,
-            -1, -1, -1, -1,
-            -15, -15, -15,
-            -1, -1, -1, -1,
-            -15, -15, -15,
-            -1, -1, -1, -1,
-            -15, -15, -15,
-            -15, -15, -15,
-            -15, -15, -15,
-            -15, -15, -15,
-            -15, -15, -15,
+            -15, -15, -15
         ]
         observation_maxs = [-1*minimum for minimum in observation_mins]
         self.observation_space = gym.spaces.box.Box(
@@ -92,9 +72,9 @@ class HumanoidBasicEnv(gym.Env):
         # Import URDF files
         self.plane = Plane(self.client)
         self.planeID = self.plane.get_ids()
-        self.agent = Humanoid(self.client)
+        self.agent = TinyAgent(self.client)
         self.agentID = self.agent.get_ids()
-        self.target = Target(self.client, self.motionFile, staticTarget=True)
+        self.target = TinyTarget(self.client, self.motionFile, staticTarget=True)
 
         # Add friction to the plane (just in case it is not present on initialization)
         p.changeDynamics(bodyUniqueId=self.planeID, linkIndex=-1, lateralFriction=0.9)
@@ -124,7 +104,7 @@ class HumanoidBasicEnv(gym.Env):
         # point[3] indicates the link index of the agent body touching the ground
         # in this statement, link 5 is rFoot, and link 11 is lFoot
         # if any other link touches the ground, we assume the agent has fallen
-        return any([True for point in contactPoints if point[3] != 5 and point[3] != 11])
+        return False  #any([True for point in contactPoints if point[3] != 5 and point[3] != 11])
 
     def agentDriftedAway(self):
         targetPos = np.array(self.target.targetPose[0:3])
@@ -238,7 +218,7 @@ class HumanoidBasicEnv(gym.Env):
 # total_steps = 0
 # while total_steps<50:
 #     while not time_step[2] == True:
-#         time_step = test.step(np.random.uniform(low=-1, high=1, size=(28,)))
+#         time_step = test.step(np.random.uniform(low=-1, high=1, size=(3,)))
 #         total_steps += 1
 #         try:
 #             test.render()
