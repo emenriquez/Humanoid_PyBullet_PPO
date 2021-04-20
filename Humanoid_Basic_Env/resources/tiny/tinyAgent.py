@@ -34,6 +34,17 @@ class TinyAgent:
         self.numJoints=p.getNumJoints(self.humanoidAgent)
         self.sphericalJoints=None
         self.revoluteJoints=None
+        
+        y2zPos = [0, 0, 0.0]
+        y2zOrn = p.getQuaternionFromEuler([1.57, 0, 0])
+        basePos, baseOrn = p.multiplyTransforms(y2zPos, y2zOrn, [0,1,0], p.getQuaternionFromEuler([0, 0, 0]))
+        # set the agent's root position and orientation
+        p.resetBasePositionAndOrientation(
+            self.humanoidAgent,
+            posObj=basePos,
+            ornObj=baseOrn
+        )
+
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setTimeStep(1./240)
         self.initializeJoints()
@@ -112,15 +123,10 @@ class TinyAgent:
                      [angularVelocity for angularVelocity in rootAngularVelocity]
         '''
         output index structure of allJointStates:
-            [0, 1, 2] - root position (xyz)
-            [3, 4, 5, 6] - root orientation quaternion (xyzw)
-            [7, 8, 9] - root velocity (xyz)
-            [10, 11, 12] - root angular velocity (xyz)
-            [13-19] - (4D orientation Quaternion, 3D angular velocity) for each spherical joint in order:
+            [0-6] - (4D orientation Quaternion, 3D angular velocity) for each spherical joint in order:
                                             rHip,
         '''
-        allJointStates = rootState + \
-            [jointInfo for joint in [] for jointInfo in joint[:2]] + \
+        allJointStates = [jointInfo for joint in [] for jointInfo in joint[:2]] + \
                 [jointInfo for joint in sphericalJointStates for jointInfo in list(sum(joint[:2], ()))] + \
                     endEffectorPositionsFlattened # removed revoluteJointStates since we have no revolute joints currently
 
@@ -133,7 +139,7 @@ class TinyAgent:
         '''
         # Format actions from -1,1 to actual values.
         # New scaledAction values will fall in range of -maxForce, maxForce
-        maxForce = 100
+        maxForce = 200
         scaledActions = [action*maxForce for action in actions]
         formattedActions = []
         # condense flat array into list of list format for spherical joint control
@@ -227,28 +233,7 @@ class TinyAgent:
                 time.sleep(0.1/240)
 
     def setStartingPositionAndVelocity(self, inputFrame):
-        # set the agent's root position and orientation
-        p.resetBasePositionAndOrientation(
-            self.humanoidAgent,
-            posObj=inputFrame[0:3],
-            ornObj=inputFrame[3:7]
-        )
-        # set the agent's root velocity and angular velocity
-        p.resetBaseVelocity(
-            self.humanoidAgent,
-            linearVelocity=inputFrame[7:10],
-            angularVelocity=inputFrame[10:13]
-        )
-        # Set joint positions
-        # revoluteJointIndices = [13, 15, 17, 19]
-        # for i, joint in enumerate(self.revoluteJoints):
-        #     p.resetJointState(
-        #         self.humanoidAgent,
-        #         jointIndex=joint,
-        #         targetValue=inputFrame[revoluteJointIndices[i]],
-        #         targetVelocity=inputFrame[revoluteJointIndices[i]+1]
-        #     )
-        sphericalJointIndices = [13]
+        sphericalJointIndices = [0]
         p.resetJointStatesMultiDof(
             self.humanoidAgent,
             jointIndices=self.sphericalJoints,
@@ -262,7 +247,7 @@ class TinyAgent:
 
 # clientID = p.connect(p.GUI)
 # p.setRealTimeSimulation(False)
-# test = tinyAgent(clientID)
+# test = TinyAgent(clientID)
 
 
 #     # testing mocap file playback

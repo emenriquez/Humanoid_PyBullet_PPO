@@ -1,4 +1,3 @@
-from Humanoid_Basic_Env.resources.tiny.tinyAgent import TinyAgent
 import pybullet as p
 import os
 import numpy as np
@@ -20,8 +19,8 @@ class TinyTarget:
     def __init__(self, client, motionFile, staticTarget=False):
         self.staticTarget = staticTarget
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
-        self.agentPose = np.zeros(shape=(77,))
-        self.targetPose = [-0.22032800316810608, 0.004294916521757841, 0.6617388129234314, 0.7039509129823992, 0.16629285435255795, -0.1374280545944393, 0.6766929351728991, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.374817, 0.0, 0.179283, 0.0, -1.35178, 0.0, 0.244704, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, -0.023734002022433733, -0.03917100333785926, 0.6930770590588314, 0.7194070613024768, 0.0, 0.0, 0.0, 0.08092368212796099, -0.08589996560423413, 0.10751054955181422, -0.14534513385760567, -0.24799329812892978, 1.4415175836034657, 0.08382827858824551, 0.08317185385017556, 0.11371258083657892, -0.14028942157236113, 0.11820706621011437, 1.4564192379937035]
+        self.agentPose = None
+        self.targetPose = None
         motionFile = os.path.join(os.path.dirname(__file__), '../', motionFile)
         with open(motionFile, "r") as f:
             self.targetMotion = json.load(f)
@@ -62,20 +61,6 @@ class TinyTarget:
 
         targetFrames = self.targetMotion['Frames']
         for frameIndex in range(len(targetFrames)-1):
-            # Calculate First Frame
-            targetPos_orig = [targetFrames[frameIndex][i] for i in [1, 2, 3]]
-            targetOrn_orig = targetFrames[frameIndex][5:8] + [targetFrames[frameIndex][4]]
-            # transform the position and orientation to have z-axis upward
-            y2zPos = [0, 0, 0.0]
-            y2zOrn = p.getQuaternionFromEuler([1.57, 0, 0])
-            basePos, baseOrn = p.multiplyTransforms(y2zPos, y2zOrn, targetPos_orig, targetOrn_orig)
-            # set the agent's root position and orientation
-            p.resetBasePositionAndOrientation(
-                self.targetDummyID,
-                posObj=basePos,
-                ornObj=baseOrn
-            )
-
             # Set joint positions
             for joint in self.targetDummy.revoluteJoints:
                 p.resetJointState(
@@ -93,19 +78,6 @@ class TinyTarget:
             deltaTime = targetFrames[frameIndex][0]
 
             if frameIndex < len(targetFrames)-1:
-                targetPos_orig = [targetFrames[frameIndex+1][i] for i in [1, 2, 3]]
-                targetOrn_orig = targetFrames[frameIndex+1][5:8] + [targetFrames[frameIndex+1][4]]
-                # transform the position and orientation to have z-axis upward
-                y2zPos = [0, 0, 0.0]
-                y2zOrn = p.getQuaternionFromEuler([1.57, 0, 0])
-                basePos, baseOrn = p.multiplyTransforms(y2zPos, y2zOrn, targetPos_orig, targetOrn_orig)
-                # set the agent's root position and orientation
-                p.resetBasePositionAndOrientation(
-                    self.targetDummyID,
-                    posObj=basePos,
-                    ornObj=baseOrn
-                )
-
                 # Set joint positions
                 for joint in self.targetDummy.revoluteJoints:
                     p.resetJointState(
@@ -122,9 +94,6 @@ class TinyTarget:
                 nextFrame = self.targetDummy.collectObservations()
 
             processedTargetMotion.append(self.processVelocities(currentFrame, nextFrame, deltaTime))
-                # Use the lines below for debug testing - safe to remove once confirmed to function
-            # self.targetPose = currentFrame
-            # print(f'{frameIndex}\t {self.totalImitationReward(agentPose=processedTargetMotion[-1]):.4f}')
 
         return processedTargetMotion
 
@@ -154,20 +123,6 @@ class TinyTarget:
 
         targetFrames = self.targetMotion['Frames']
         for frameIndex in range(len(targetFrames)-1):
-            # Calculate First Frame
-            targetPos_orig = [targetFrames[frameIndex][i] for i in [1, 2, 3]]
-            targetOrn_orig = targetFrames[frameIndex][5:8] + [targetFrames[frameIndex][4]]
-            # transform the position and orientation to have z-axis upward
-            y2zPos = [0, 0, 0.0]
-            y2zOrn = p.getQuaternionFromEuler([1.57, 0, 0])
-            basePos, baseOrn = p.multiplyTransforms(y2zPos, y2zOrn, targetPos_orig, targetOrn_orig)
-            # set the agent's root position and orientation
-            p.resetBasePositionAndOrientation(
-                self.targetDummyID,
-                posObj=basePos,
-                ornObj=baseOrn
-            )
-
             # Set joint positions
             for joint in self.targetDummy.revoluteJoints:
                 p.resetJointState(
@@ -201,42 +156,34 @@ class TinyTarget:
         # pre-fill processed frame with currentFrame data
         processedFrame = frame[:]
 
-        # fill processedFrame with velocities
-        # base velocity
-        processedFrame[7:10] = self.calculateLinearVelocity(frame[0:3], nextFrame[0:3], deltaTime)
-        # base angular velocities
-        processedFrame[10:13] = self.calculateAngularVelocity(frame[3:7], nextFrame[3:7], deltaTime)
-        # 1D joint velocities
-        for i in []:
-            processedFrame[i+1] = self.calculateLinearVelocity([frame[i]], [nextFrame[i]], deltaTime)[0]
         # Angular Velocities from Quaternions
-        for i in [13]:
+        for i in [0]:
             processedFrame[i+4:i+7] = self.calculateAngularVelocity(frame[i:i+4], nextFrame[i:i+4], deltaTime)
 
         return processedFrame
 
     def computePoseReward(self):
         totalQuatDistance = 0
-        for i in [3, 13]:
+        for i in [0]:
             rotation1 = self.targetPose[i:i+4]
             rotation2 = self.agentPose[i:i+4]
             diffQuat = p.getDifferenceQuaternion(rotation1,rotation2)
             _, quatMag = p.getAxisAngleFromQuaternion(diffQuat)
             # value is rounded because the calculations even for the same quaternions sometimes produce small errors
             totalQuatDistance += np.around(quatMag, decimals=2)
-        return np.exp(-0.2*totalQuatDistance) # original value is -2*distance
+        return np.exp(-2*totalQuatDistance) # original value is -2*distance
     def computeVelocityReward(self):
-        velocityIndices = [17]
+        velocityIndices = [4]
         totalVelocityDifference = sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in velocityIndices])
-        return np.exp(-0.1*totalVelocityDifference) # original value is -1*distance
+        return np.exp(-1*totalVelocityDifference) # original value is -1*distance
     def computeEndEffectorReward(self):
         # totalDistance = sum([np.linalg.norm(np.array(self.targetPose[i:i+3]) - np.array(self.agentPose[i:i+3])) for i in [77, 80, 83, 86]])
         return 1 # original value is -40*distance
     def computeCenterOfMassReward(self):
-        agentRoot = self.agentPose[0:3]
-        targetRoot = self.targetPose[0:3]
-        distance = np.linalg.norm(np.array(targetRoot) - np.array(agentRoot))
-        return np.exp(-1*distance) # original value is -10*distance
+        # agentRoot = self.agentPose[0:3]
+        # targetRoot = self.targetPose[0:3]
+        # distance = np.linalg.norm(np.array(targetRoot) - np.array(agentRoot))
+        return 1 # np.exp(-1*distance) # original value is -10*distance
 
     def totalImitationReward(self, agentPose):
         self.agentPose = agentPose
@@ -244,7 +191,7 @@ class TinyTarget:
         velocityReward = self.computeVelocityReward()
         endEffectorReward = self.computeEndEffectorReward()
         centerOfMassReward = self.computeCenterOfMassReward()
-        totalReward = 0.76*poseReward + 0.12*velocityReward + 0*endEffectorReward + 0.12*centerOfMassReward # original weights are 0.65, 0.1, 0.15, 0.1
+        totalReward = 0.87*poseReward + 0.13*velocityReward + 0*endEffectorReward + 0*centerOfMassReward # original weights are 0.65, 0.1, 0.15, 0.1
         return totalReward
 
     def computeGoalReward(self, frame):
@@ -281,9 +228,10 @@ class TinyTarget:
     
 # Debug tests
 # clientID = p.connect(p.DIRECT)
-# test = Target(client=clientID, motionFile='../Motions/humanoid3d_backflip.txt', staticTarget=True)
+# test = TinyTarget(client=clientID, motionFile='Motions/humanoid3d_backflip.txt', staticTarget=True)
 
-# test.randomStartFrame()
+# print(test.randomStartFrame())
+
 
 # result = test.initializeMotionTarget()
 

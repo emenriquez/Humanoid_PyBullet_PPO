@@ -142,3 +142,4 @@ cython_debug/
 # Model Files to Ignore (they are big and I don't want to flood the repo with these for now
 walk/
 HumanoidBasicEnv-Full.py
+*.zip

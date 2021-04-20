@@ -23,7 +23,7 @@ class HumanoidBasicEnv(gym.Env):
 
     def __init__(self):
         # Mocap file for imitation
-        self.motionFile='Motions/humanoid3d_walk.txt'
+        self.motionFile='Motions/humanoid3d_backflip.txt'
 
         # Actions
         self.action_space = gym.spaces.box.Box(
@@ -33,12 +33,11 @@ class HumanoidBasicEnv(gym.Env):
 
         # Observations
         observation_mins = [
+            -1, -1, -1, -1,
             -15, -15, -15,
             -1, -1, -1, -1,
             -15, -15, -15,
-            -15, -15, -15,
-            -1, -1, -1, -1,
-            -15, -15, -15
+            -1
         ]
         observation_maxs = [-1*minimum for minimum in observation_mins]
         self.observation_space = gym.spaces.box.Box(
@@ -74,13 +73,13 @@ class HumanoidBasicEnv(gym.Env):
         self.planeID = self.plane.get_ids()
         self.agent = TinyAgent(self.client)
         self.agentID = self.agent.get_ids()
-        self.target = TinyTarget(self.client, self.motionFile, staticTarget=True)
+        self.target = TinyTarget(self.client, self.motionFile, staticTarget=False)
 
         # Add friction to the plane (just in case it is not present on initialization)
         p.changeDynamics(bodyUniqueId=self.planeID, linkIndex=-1, lateralFriction=0.9)
 
         # Initial state settings
-        self.randomizeStart = True
+        self.randomizeStart = False
         self.state = None
         self.done = False
         self.rendered_img = None
@@ -92,7 +91,26 @@ class HumanoidBasicEnv(gym.Env):
 
     def collectObservations(self):
         observations_list = []
-        observations_list.extend(self.agent.collectObservations())
+        agentPose = self.agent.collectObservations()
+        targetPose = self.target.targetPose
+        observations_list.extend(agentPose)
+
+        # Difference between agent and target joint rotation
+        rotation1 = agentPose[:4]
+        rotation2 = targetPose[:4]
+        diffQuat = p.getDifferenceQuaternion(rotation1,rotation2)
+        observations_list.extend(diffQuat)
+
+        # difference between agent and target joint velocity
+        jointVelocity = agentPose[4:]
+        targetVelocity = targetPose[4:]
+
+        velocityDifference = np.array(jointVelocity) - np.array(targetVelocity)
+        observations_list.extend(velocityDifference)
+
+        # Phase
+        phase = 2*(self.target.framePosition / len(self.target.processedMotionTarget)) - 1
+        observations_list.append(phase)
 
         return observations_list
 
@@ -152,7 +170,7 @@ class HumanoidBasicEnv(gym.Env):
             self.agent.applyActions(actions=action)
         
             # Step the simulation 8 times to increment frame by deltaTime
-            for i in range(1):
+            for i in range(8):
                 p.stepSimulation()
 
             # move target to the next frame pose
@@ -171,7 +189,7 @@ class HumanoidBasicEnv(gym.Env):
             self.rendered_img = plt.imshow(np.zeros((720, 960, 4)))
 
         # Pybullet Camera controls for rendering
-        self.view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=self.target.targetPose[0:3], # Use self.state[0:3] to track agent instead of target
+        self.view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[0,1,0], # Use self.state[0:3] to track agent instead of target
                                                             distance=4,
                                                             yaw=60,
                                                             pitch=-30,
