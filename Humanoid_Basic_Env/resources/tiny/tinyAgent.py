@@ -132,7 +132,7 @@ class TinyAgent:
 
         return allJointStates
     
-    def applyActions(self, actions):
+    def applyActions(self, actions, timeStep=1./240, frameDeltaTime=0.0625):
         '''
         Action indices should correspond to the following:
               [0-2] - right_hip        Type: SPHERICAL
@@ -145,20 +145,25 @@ class TinyAgent:
         # condense flat array into list of list format for spherical joint control
         for i in [0]:
             formattedActions.append(scaledActions[i:i+3])
-        # Set spherical joint torques
-        p.setJointMotorControlMultiDofArray(
-            bodyUniqueId=self.humanoidAgent,
-            jointIndices=self.sphericalJoints,
-            controlMode=p.TORQUE_CONTROL,
-            forces=formattedActions[:]
-        )
-        # Set revolute joint torques (Commands are different)
-        # p.setJointMotorControlArray(
-        #     bodyUniqueId=self.humanoidAgent,
-        #     jointIndices=self.revoluteJoints,
-        #     controlMode=p.TORQUE_CONTROL,
-        #     forces=formattedActions[8:]
-        # )
+        
+        numSubFrames = int(frameDeltaTime / timeStep)
+        for _ in range(numSubFrames):
+
+            # Set spherical joint torques
+            p.setJointMotorControlMultiDofArray(
+                bodyUniqueId=self.humanoidAgent,
+                jointIndices=self.sphericalJoints,
+                controlMode=p.TORQUE_CONTROL,
+                forces=formattedActions[:]
+            )
+            # Set revolute joint torques (Commands are different)
+            # p.setJointMotorControlArray(
+            #     bodyUniqueId=self.humanoidAgent,
+            #     jointIndices=self.revoluteJoints,
+            #     controlMode=p.TORQUE_CONTROL,
+            #     forces=formattedActions[8:]
+            # )
+            p.stepSimulation()
 
     def playReferenceMotion(self, motionFile):
         motionFile = os.path.join(os.path.dirname(__file__), motionFile)
@@ -255,16 +260,26 @@ class TinyAgent:
 #     test.playReferenceMotion('../Motions/humanoid3d_dance_a.txt')
 
     # testing joint control
-# for i in range(100):
-#     actions = 2*np.random.random(size=(3,)) - 1
-#     test.applyActions(actions)
+
+# p.enableJointForceTorqueSensor(
+#     bodyUniqueId=test.get_ids(),
+#     jointIndex=1,
+#     enableSensor=True
+# )
+# for i in range(3):
+#     actions = [0.1, 0.1, 0.1] # 2*np.random.random(size=(3,)) - 1
+
 #     time.sleep(0.02)
-#     p.stepSimulation()
-#     print(
-#         p.getJointStateMultiDof(
-#         bodyUniqueId=test.get_ids(),
-#         jointIndex=1
-#     )[:2])
+#     for x in range(3):
+#         test.applyActions(actions)
+#         p.stepSimulation()
+#         time.sleep(0.02)
+#         print(
+#             p.getJointStateMultiDof(
+#                 bodyUniqueId=test.get_ids(),
+#                 jointIndex=1,
+#             )[2:]
+#         )
 
 # p.disconnect()
 

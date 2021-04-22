@@ -17,7 +17,7 @@ model = PPO('MlpPolicy', env, policy_kwargs=policy_kwargs, verbose=0, tensorboar
 # Save the best model periodically during training
 bestModelCallback = EvalCallback(eval_env=eval_env, eval_freq=10000, log_path='./walk/logs/tiny/', best_model_save_path='./walk/logs/tiny/')
 
-model.learn(total_timesteps=500000, eval_freq=5000, eval_env=eval_env, tb_log_name='walking_tiny', callback=bestModelCallback)
+model.learn(total_timesteps=500000, eval_freq=5000, eval_env=eval_env, tb_log_name='tine_rework_stepSim', callback=bestModelCallback)
 model.save('tiny_agent_moving')
 
 env.close()

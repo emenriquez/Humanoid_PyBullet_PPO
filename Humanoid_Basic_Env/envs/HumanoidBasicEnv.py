@@ -50,8 +50,9 @@ class HumanoidBasicEnv(gym.Env):
 
         # Pybullet environment settings
         self.client = p.connect(p.DIRECT)
+        self.timeStep = 1./240
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        p.setPhysicsEngineParameter(fixedTimeStep=1./240)
+        p.setPhysicsEngineParameter(fixedTimeStep=self.timeStep)
         p.setPhysicsEngineParameter(numSolverIterations=12)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
         p.setRealTimeSimulation(0)
@@ -167,11 +168,11 @@ class HumanoidBasicEnv(gym.Env):
             reward = self.target.totalImitationReward(agentPose=pose)
             self.episode_reward += reward
             self.step_counter += 1
-            self.agent.applyActions(actions=action)
-        
-            # Step the simulation 8 times to increment frame by deltaTime
-            for i in range(8):
-                p.stepSimulation()
+            self.agent.applyActions(
+                actions=action,
+                timeStep=self.timeStep,
+                frameDeltaTime=0.0625
+            )
 
             # move target to the next frame pose
             self.target.nextFrame()

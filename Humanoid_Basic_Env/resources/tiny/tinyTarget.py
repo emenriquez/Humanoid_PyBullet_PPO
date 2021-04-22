@@ -21,6 +21,7 @@ class TinyTarget:
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         self.agentPose = None
         self.targetPose = None
+        self.deltaTime = 0.01
         motionFile = os.path.join(os.path.dirname(__file__), '../', motionFile)
         with open(motionFile, "r") as f:
             self.targetMotion = json.load(f)
