@@ -8,9 +8,9 @@ env_name = 'HumanoidBasicEnv-v0'
 
 env = gym.make(env_name)
 
-model = PPO.load('static_agent', env=env)
+# model = PPO.load('static_agent', env=env)
 
-# model = PPO('MlpPolicy', env, verbose=0) # Use if no training is available
+model = PPO('MlpPolicy', env, verbose=0) # Use if no training is available
 
 
 # Render performance of the agent in the given environment

@@ -1,1 +1,2 @@
 from Humanoid_Basic_Env.envs.HumanoidBasicEnv import HumanoidBasicEnv
+from Humanoid_Basic_Env.envs.HumanoidTinyEnv import HumanoidTinyEnv
