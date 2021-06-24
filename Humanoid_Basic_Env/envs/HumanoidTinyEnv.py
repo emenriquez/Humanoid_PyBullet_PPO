@@ -16,7 +16,9 @@ from Humanoid_Basic_Env.resources.plane import Plane
 
 class HumanoidTinyEnv(gym.Env):
     '''
-    Description here. Coming soon.
+    This environment is a testing version of the deepmimic implementation in Pybullet.
+    It aims to train a "tiny" agent (only 1 or 2 joints) to mimic a motion.
+    The environment is primarily used for testing the validity of the functions, agent and observations for use in the full deepmimic model.
     '''
 
     def __init__(self):
@@ -66,9 +68,6 @@ class HumanoidTinyEnv(gym.Env):
             high=np.array(observation_maxs, dtype=np.float32)
         )
 
-        # Basic environment settings
-        self.np_random, _ = gym.utils.seeding.np_random()
-
         # Pybullet environment settings
         self.client = p.connect(p.DIRECT)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -106,6 +105,7 @@ class HumanoidTinyEnv(gym.Env):
         self.rendered_img = None
         self.episode_reward = 0
 
+    # Environment methods
     def seed(self, seed=None):
         self.np_random, seed = gym.utils.seeding.np_random(seed)
         return [seed]
@@ -227,27 +227,4 @@ class HumanoidTinyEnv(gym.Env):
     def close(self):
         p.disconnect(self.client)
 
-
-# Demo
-
-# test = HumanoidBasicEnv()
-
-# time_step = test.reset()
-
-# reward = 0
-# total_steps = 0
-# while total_steps<50:
-#     while not time_step[2] == True:
-#         time_step = test.step(np.random.uniform(low=-1, high=1, size=(28,)))
-#         total_steps += 1
-#         try:
-#             test.render()
-#         except:
-#             quit()
-#         if time_step[1] > 0:
-#             print(time_step[1])
-#             print(f'total steps: {total_steps}')
-#             reward += time_step[1]
-
-#     time_step = test.reset()
 
