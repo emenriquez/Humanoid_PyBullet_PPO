@@ -13,7 +13,7 @@ test = TinyAgent(clientID)
 
 
     # testing mocap file playback
-for i in range(1):
-    test.playReferenceMotion('../Motions/humanoid3d_dance_a.txt')
+for i in range(3):
+    test.playReferenceMotion('../Motions/humanoid3d_spinkick.txt')
 
 p.disconnect()

@@ -8,6 +8,7 @@ from sys import path
 path.append(".")
 
 from Humanoid_Basic_Env.resources.tiny.tinyAgent import TinyAgent
+from Humanoid_Basic_Env.resources.poseInterpolator import PoseInterpolator
 
 
 class TinyTarget:
@@ -219,6 +220,9 @@ class TinyTarget:
             self.targetPose = self.processedMotionTarget[self.framePosition]
             self.displayTargetPose(processedFrame=self.processedMotionTarget[self.framePosition])
         return self.processedMotionTarget[self.framePosition]
+    
+    def nextFrameStep(self):
+        pass
     
     def checkIfLastFrame(self):
         return self.framePosition >= len(self.processedMotionTarget)-1

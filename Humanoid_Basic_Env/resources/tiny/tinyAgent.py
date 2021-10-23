@@ -3,6 +3,9 @@ import pybullet as p
 import os
 import numpy as np
 import json
+import math
+
+from Humanoid_Basic_Env.resources.poseInterpolator import PoseInterpolator
 
 class TinyAgent:
     def __init__(self, client, target=False):
@@ -46,6 +49,8 @@ class TinyAgent:
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setTimeStep(1./240)
         self.initializeJoints()
+        # initialize motion interpolator
+        self.poseInterpolator = PoseInterpolator()
         
     def get_ids(self):
         return self.humanoidAgent
@@ -181,9 +186,9 @@ class TinyAgent:
         '''
         JointFrameMapIndices = [
             0,                  #root
-            [9, 10, 11, 8],     #chest
-            [13, 14, 15, 12],   #neck
-            [17, 18, 19, 16],   #rHip
+            [8, 9, 10, 11],     #chest
+            [12, 13, 14, 15],   #neck
+            [16, 17, 18, 19],   #rHip
             20,                 #rKnee
             [22, 23, 24, 21],   #rAnkle
             [26, 27, 28, 25],   #rShoulder
@@ -197,9 +202,13 @@ class TinyAgent:
             0,                  #lWrist
         ]
 
-        for frame in motion['Frames']:
+        step = 0
+        while(step <= len(motion['Frames'])):
+            currentframe = motion['Frames'][math.floor(step)]
+            nextFrame = motion['Frames'][math.floor(step+1)]
+            frame = self.poseInterpolator.Slerp(step%1, currentframe, nextFrame)
             basePos1 = [frame[i] for i in [1, 2, 3]]
-            baseOrn1 = frame[5:8] + [frame[4]]
+            baseOrn1 = frame[4:8]
             # transform the position and orientation to have z-axis upward
             y2zPos = [0, 0, 0.0]
             y2zOrn = p.getQuaternionFromEuler([1.57, 0, 0])
@@ -224,9 +233,12 @@ class TinyAgent:
                     jointIndex=joint,
                     targetValue=[frame[i] for i in JointFrameMapIndices[3]]
                 )
-            for i in range(16):
+            fraction = 1
+            for i in range(1):
                 p.stepSimulation()
-                time.sleep(0.1/240)
+                time.sleep(fraction/240)
+            
+            step +=fraction
 
     def setStartingPositionAndVelocity(self, inputFrame):
         sphericalJointIndices = [0]

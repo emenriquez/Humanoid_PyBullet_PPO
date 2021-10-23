@@ -288,7 +288,7 @@ class Humanoid:
             targetVelocities=[inputFrame[index+4:index+7] for index in sphericalJointIndices]
         )
         # slight delay is needed before agent will reset. Need to investigate before removing this delay
-        time.sleep(0.005)
+        time.sleep(0.1/240)
         # p.stepSimulation()
 
 # Debug tests
@@ -299,7 +299,7 @@ class Humanoid:
 
     # testing mocap file playback
 # for i in range(1):
-#     test.playReferenceMotion('Motions/humanoid3d_backflip.txt')
+#     test.playReferenceMotion('Motions/humanoid3d_spinkick.txt')
 
     # testing joint control
 # actions = np.zeros(shape=(28,))

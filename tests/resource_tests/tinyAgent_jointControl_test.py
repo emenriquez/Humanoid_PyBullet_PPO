@@ -21,18 +21,17 @@ p.enableJointForceTorqueSensor(
     jointIndex=1,
     enableSensor=True
 )
-for i in range(3):
+for i in range(30):
     actions = 0.2*np.random.random(size=(3,)) - 0.1
 
-    time.sleep(0.02)
+    time.sleep(0.1)
     for x in range(3):
         test.applyActions(actions)
-        time.sleep(0.2)
-        print(
-            p.getJointStateMultiDof(
-                bodyUniqueId=test.get_ids(),
-                jointIndex=1,
-            )[2:]
-        )
+        # print(
+        #     p.getJointStateMultiDof(
+        #         bodyUniqueId=test.get_ids(),
+        #         jointIndex=1,
+        #     )[2:]
+        # )
 
 p.disconnect()
